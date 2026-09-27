@@ -1,0 +1,14 @@
+# Node / Frontend
+/frontend/node_modules/
+/frontend/dist/
+
+# PHP / Backend / Laravel
+/backend/vendor/
+/backend/.env
+/backend/storage/*.key
+
+# Системные файлы и IDE
+.DS_Store
+.vscode/
+.idea/
+*.log
