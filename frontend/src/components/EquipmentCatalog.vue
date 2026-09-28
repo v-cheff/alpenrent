@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { catalogTabs, equipment } from '../data/catalog'
 import { useBooking } from '../composables/useBooking'
 import ProductCard from './ProductCard.vue'
@@ -11,6 +11,27 @@ const filtered = computed(() => {
   if (activeTab.value === 'all') return equipment
   return equipment.filter((item) => item.category === activeTab.value)
 })
+
+const product = ref([])
+
+const loadData = async () => {
+  try {
+    const res = await fetch('http://127.0.0.1:8000/v1/equipment')
+    if (res.ok) {
+      product.value = await res.json()
+      console.log('Fetched data:', product.value)
+    } else {
+      console.error('Ошибка сервера:', res.status)
+    }
+  } catch (err) {
+    console.error('Ошибка сети/CORS:', err)
+  }
+}
+
+onMounted(() => {
+  loadData()
+})
+
 </script>
 
 <template>
