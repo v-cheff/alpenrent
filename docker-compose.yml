@@ -1,0 +1,21 @@
+services:
+  backend:
+    build:
+      context: ./backend        # Указываем относительный путь к папке бэкенда
+      dockerfile: Dockerfile     # Имя файла внутри папки ./backend
+    container_name: laravel_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app          # Связываем локальную папку backend с контейнером
+
+  frontend:
+    build:
+      context: ./frontend       # Указываем относительный путь к папке фронтенда
+      dockerfile: Dockerfile     # Имя файла внутри папки ./frontend
+    container_name: vue_frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules

@@ -5,6 +5,9 @@ export default defineConfig({
   plugins: [vue()],
   server: {
     port: 5173,
-    host: true,
+    host: true, // Слушает 0.0.0.0 (доступен снаружи контейнера)
+    watch: {
+      usePolling: true, // Гарантирует Hot Reload внутри Docker на всех ОС
+    },
   },
 })
