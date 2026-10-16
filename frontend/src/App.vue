@@ -1,25 +1,26 @@
 <script setup>
-import SiteHeader from './components/SiteHeader.vue'
-import HeroSection from './components/HeroSection.vue'
-import EquipmentCatalog from './components/EquipmentCatalog.vue'
-import TrustBlock from './components/TrustBlock.vue'
-import SizePickerDialog from './components/SizePickerDialog.vue'
-import SizingGuideModal from './components/SizingGuideModal.vue'
-import MobileStickyBar from './components/MobileStickyBar.vue'
-import SiteFooter from './components/SiteFooter.vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import HomePage from './HomePage.vue'
+import AdminEquipmentPage from './admin/AdminEquipmentPage.vue'
+
+const currentPath = ref(window.location.pathname || '/')
+
+const currentView = computed(() => (currentPath.value === '/admin' ? 'admin' : 'home'))
+
+function syncPath() {
+  currentPath.value = window.location.pathname || '/'
+}
+
+onMounted(() => {
+  window.addEventListener('popstate', syncPath)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('popstate', syncPath)
+})
 </script>
 
 <template>
-  <div class="min-h-screen">
-    <SiteHeader />
-    <main>
-      <HeroSection />
-      <EquipmentCatalog />
-      <TrustBlock />
-    </main>
-    <SiteFooter />
-    <SizePickerDialog />
-    <SizingGuideModal />
-    <MobileStickyBar />
-  </div>
+  <HomePage v-if="currentView === 'home'" />
+  <AdminEquipmentPage v-else />
 </template>
