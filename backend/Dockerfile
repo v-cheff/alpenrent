@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y \
 
 # 2. Устанавливаем базовые расширения PHP и PDO-драйверы для PostgreSQL и SQLite
 RUN docker-php-ext-install mbstring bcmath gd xml zip pdo_pgsql pdo_sqlite
+RUN printf 'upload_max_filesize=6M\npost_max_size=8M\n' > /usr/local/etc/php/conf.d/uploads.ini
 
 WORKDIR /app
 
@@ -44,4 +45,4 @@ RUN mkdir -p storage/framework/sessions \
 EXPOSE 8000
 
 # 9. Автоматическая генерация .env и APP_KEY при отсутствии + запуск сервера
-CMD ["sh", "-c", "if [ ! -f .env ]; then cp .env.example .env && php artisan key:generate; fi && php artisan serve --host=0.0.0.0 --port=8000"]
+CMD ["sh", "-c", "if [ ! -f .env ]; then cp .env.example .env && php artisan key:generate; fi && php artisan serve --host=0.0.0.0 --port=8000 --no-reload"]

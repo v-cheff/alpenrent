@@ -1,182 +1,38 @@
 <script setup>
-import { computed, reactive } from 'vue'
+import { computed, onMounted, reactive } from 'vue'
 import { catalogTabs } from '../data/catalog.js'
+import { createEquipment, getEquipment } from '../api/equipment.js'
 
 const todayIso = new Date().toISOString().slice(0, 10)
 
-const equipmentSeed = [
-  {
-    id: 'atomic-redster',
-    name: 'Atomic Redster S9 Revoshock',
-    category: 'ski',
-    categoryLabel: 'Performance Ski Set',
-    badge: 'Model 2026',
-    badgeTone: 'new',
-    image:
-      'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?auto=format&fit=crop&w=900&q=80',
-    specs: ['Radius 13.5 m', 'Camber race profile', 'Includes poles'],
-    dailyRate: 49,
-    deposit: 150,
-    sizes: ['150', '157', '165', '172'],
-    availableNow: true,
-    availableDates: ['2026-10-16', '2026-10-18', '2026-10-20'],
-  },
-  {
-    id: 'rossignol-experience',
-    name: 'Rossignol Experience 86 Basalt',
-    category: 'ski',
-    categoryLabel: 'All-Mountain Ski Set',
-    badge: 'Freshly Waxed',
-    badgeTone: 'waxed',
-    image:
-      'https://images.unsplash.com/photo-1605540436563-5bca919ae766?auto=format&fit=crop&w=900&q=80',
-    specs: ['Radius 16 m', 'Air Tip rocker', 'ISO 11088 bindings'],
-    dailyRate: 39,
-    deposit: 80,
-    sizes: ['146', '154', '162', '170', '178'],
-    availableNow: false,
-    availableDates: ['2026-10-17', '2026-10-21'],
-  },
-  {
-    id: 'head-kore',
-    name: 'HEAD Kore 93',
-    category: 'ski',
-    categoryLabel: 'Freeride Ski Set',
-    badge: 'Freshly Waxed',
-    badgeTone: 'waxed',
-    image:
-      'https://images.unsplash.com/photo-1483664852095-d6cc6870703d?auto=format&fit=crop&w=900&q=80',
-    specs: ['Radius 17.8 m', 'Tip & tail rocker', 'Carbon sandwich'],
-    dailyRate: 45,
-    deposit: 120,
-    sizes: ['156', '163', '170', '177', '184'],
-    availableNow: true,
-    availableDates: ['2026-10-16', '2026-10-19', '2026-10-22'],
-  },
-  {
-    id: 'burton-custom',
-    name: 'Burton Custom Camber',
-    category: 'board',
-    categoryLabel: 'All-Mountain Snowboard',
-    badge: 'Model 2026',
-    badgeTone: 'new',
-    image:
-      'https://images.unsplash.com/photo-1522056615691-da7b8106c665?auto=format&fit=crop&w=900&q=80',
-    specs: ['Camber pop', 'Directional twin', 'Channel bindings'],
-    dailyRate: 42,
-    deposit: 100,
-    sizes: ['148', '152', '156', '158W', '162'],
-    availableNow: true,
-    availableDates: ['2026-10-16', '2026-10-17', '2026-10-23'],
-  },
-  {
-    id: 'jones-mind',
-    name: 'Jones Mind Expander',
-    category: 'board',
-    categoryLabel: 'Powder Snowboard',
-    badge: 'Freshly Waxed',
-    badgeTone: 'waxed',
-    image:
-      'https://images.unsplash.com/photo-1518085250887-2f833c18b9d4?auto=format&fit=crop&w=900&q=80',
-    specs: ['Spoon 3.0 nose', '3D contour base', 'Swallow tail'],
-    dailyRate: 48,
-    deposit: 130,
-    sizes: ['146', '150', '154', '158'],
-    availableNow: false,
-    availableDates: ['2026-10-22', '2026-10-23'],
-  },
-  {
-    id: 'lange-shadow',
-    name: 'Lange Shadow 120 LV',
-    category: 'boots',
-    categoryLabel: 'Alpine Ski Boots',
-    badge: 'Heat-moldable',
-    badgeTone: 'info',
-    image:
-      'https://images.unsplash.com/photo-1578662996442-48f36e048e72?auto=format&fit=crop&w=900&q=80',
-    specs: ['Flex 120', 'Last 97 mm', 'GripWalk soles'],
-    dailyRate: 22,
-    deposit: 50,
-    sizes: ['24.5', '25.5', '26.5', '27.5', '28.5'],
-    availableNow: true,
-    availableDates: ['2026-10-16', '2026-10-18', '2026-10-19'],
-  },
-  {
-    id: 'poc-obex',
-    name: 'POC Obex BC MIPS + Visor',
-    category: 'boots',
-    categoryLabel: 'Helmet & Protection',
-    badge: 'MIPS',
-    badgeTone: 'info',
-    image:
-      'https://images.unsplash.com/photo-1516731415730-0c1374e67dba?auto=format&fit=crop&w=900&q=80',
-    specs: ['MIPS liner', 'RECCO reflector', 'Category 3 visor'],
-    dailyRate: 12,
-    deposit: 40,
-    sizes: ['XS/S', 'M/L', 'XL'],
-    availableNow: true,
-    availableDates: ['2026-10-16', '2026-10-17'],
-  },
-  {
-    id: 'kids-atomic',
-    name: 'Atomic Maven Girl / Redster J',
-    category: 'kids',
-    categoryLabel: 'Kids Ski Set',
-    badge: 'Kids 4–12',
-    badgeTone: 'kids',
-    image:
-      'https://images.unsplash.com/photo-1548777123-e27896422455?auto=format&fit=crop&w=900&q=80',
-    specs: ['Soft flex bindings', 'Helmet included', 'Parent-friendly size chart'],
-    dailyRate: 24,
-    deposit: 40,
-    sizes: ['90', '100', '110', '120', '130'],
-    availableNow: false,
-    availableDates: ['2026-10-17', '2026-10-18'],
-  },
-  {
-    id: 'kids-burton',
-    name: 'Burton Mini Grom Package',
-    category: 'kids',
-    categoryLabel: 'Kids Snowboard Set',
-    badge: 'Kids 5–12',
-    badgeTone: 'kids',
-    image:
-      'https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=900&q=80',
-    specs: ['Soft bindings', 'Easy-entry boots', 'Park-ready twin'],
-    dailyRate: 26,
-    deposit: 45,
-    sizes: ['110', '120', '130', '134'],
-    availableNow: true,
-    availableDates: ['2026-10-18', '2026-10-19', '2026-10-20'],
-  },
-]
-
 const blankForm = () => ({
-  id: '',
   name: '',
   category: 'ski',
   categoryLabel: '',
   badge: '',
   badgeTone: 'new',
   image: '',
-  specs: '',
+  specs: [''],
   dailyRate: 0,
   deposit: 0,
-  sizes: '',
+  sizes: [''],
   availableNow: true,
-  availableDates: '',
+  availableDates: [''],
 })
 
 const state = reactive({
-  equipment: [...equipmentSeed],
+  equipment: [],
   activeTab: 'all',
   availabilityMode: 'all',
   selectedDate: todayIso,
   modalOpen: false,
-  modalMode: 'create',
-  selectedId: null,
   form: blankForm(),
   imagePreview: '',
+  imageFile: null,
+  formError: '',
+  loadError: '',
+  isLoading: true,
+  isSaving: false,
 })
 
 const filteredItems = computed(() => {
@@ -218,39 +74,46 @@ const stats = computed(() => ({
 }))
 
 function openCreateModal() {
-  state.modalMode = 'create'
-  state.selectedId = null
   state.form = blankForm()
   state.imagePreview = ''
-  state.modalOpen = true
-}
-
-function openEditModal(item) {
-  state.modalMode = 'edit'
-  state.selectedId = item.id
-  state.form = {
-    ...item,
-    specs: Array.isArray(item.specs) ? item.specs.join('\n') : '',
-    sizes: Array.isArray(item.sizes) ? item.sizes.join('\n') : '',
-    availableDates: Array.isArray(item.availableDates) ? item.availableDates.join('\n') : '',
-  }
-  state.imagePreview = item.image || ''
+  state.imageFile = null
+  state.formError = ''
   state.modalOpen = true
 }
 
 function closeModal() {
+  if (state.imagePreview.startsWith('blob:')) {
+    URL.revokeObjectURL(state.imagePreview)
+  }
   state.modalOpen = false
-  state.modalMode = 'create'
-  state.selectedId = null
   state.form = blankForm()
   state.imagePreview = ''
+  state.imageFile = null
+  state.formError = ''
 }
 
-function parseList(value) {
-  return value
-    .split('\n')
-    .map((item) => item.trim())
-    .filter(Boolean)
+async function loadEquipment() {
+  state.isLoading = true
+  state.loadError = ''
+
+  try {
+    state.equipment = await getEquipment()
+  } catch (error) {
+    state.equipment = []
+    state.loadError = error.message || 'Could not load equipment.'
+  } finally {
+    state.isLoading = false
+  }
+}
+
+function addListItem(field, maxItems = Infinity) {
+  if (state.form[field].length < maxItems) {
+    state.form[field].push('')
+  }
+}
+
+function removeListItem(field, index) {
+  state.form[field].splice(index, 1)
 }
 
 function handleImageUpload(event) {
@@ -259,52 +122,85 @@ function handleImageUpload(event) {
     return
   }
 
-  const reader = new FileReader()
-  reader.onload = (loadEvent) => {
-    state.form.image = loadEvent.target?.result ?? ''
-    state.imagePreview = state.form.image
-  }
-  reader.readAsDataURL(file)
-}
-
-function saveEquipment() {
-  if (!state.form.name.trim()) {
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+    state.formError = 'Choose a JPG, PNG, or WEBP image.'
+    event.target.value = ''
     return
   }
 
-  const payload = {
-    id: state.form.id ? state.form.id.trim() : `item-${Date.now()}`,
+  if (file.size > 5 * 1024 * 1024) {
+    state.formError = 'Image must be 5 MB or smaller.'
+    event.target.value = ''
+    return
+  }
+
+  state.formError = ''
+  state.imageFile = file
+  state.form.image = ''
+  if (state.imagePreview.startsWith('blob:')) {
+    URL.revokeObjectURL(state.imagePreview)
+  }
+  state.imagePreview = URL.createObjectURL(file)
+}
+
+function handleImageUrlInput() {
+  state.imageFile = null
+  if (state.imagePreview.startsWith('blob:')) {
+    URL.revokeObjectURL(state.imagePreview)
+  }
+  state.imagePreview = state.form.image
+}
+
+async function saveEquipment() {
+  if (!state.form.name.trim()) {
+    state.formError = 'Enter an equipment name.'
+    return
+  }
+
+  const formData = new FormData()
+  const fields = {
     name: state.form.name.trim(),
-    category: state.form.category.trim(),
-    categoryLabel: state.form.categoryLabel.trim() || 'Custom equipment',
-    badge: state.form.badge.trim() || 'New',
-    badgeTone: state.form.badgeTone || 'new',
-    image:
-      state.form.image ||
-      'https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=900&q=80',
-    specs: parseList(state.form.specs),
-    dailyRate: Number(state.form.dailyRate) || 0,
-    deposit: Number(state.form.deposit) || 0,
-    sizes: parseList(state.form.sizes),
-    availableNow: state.form.availableNow,
-    availableDates: parseList(state.form.availableDates),
+    category: state.form.category,
+    categoryLabel: state.form.categoryLabel.trim(),
+    badge: state.form.badge.trim(),
+    badgeTone: state.form.badgeTone,
+    dailyRate: String(state.form.dailyRate),
+    deposit: String(state.form.deposit),
+    availableNow: state.form.availableNow ? '1' : '0',
   }
 
-  if (state.modalMode === 'edit' && state.selectedId) {
-    const index = state.equipment.findIndex((item) => item.id === state.selectedId)
-    if (index >= 0) {
-      state.equipment[index] = { ...payload, id: state.selectedId }
-    }
-  } else {
-    state.equipment.unshift(payload)
+  Object.entries(fields).forEach(([key, value]) => formData.append(key, value))
+  for (const [field, values] of Object.entries({
+    specs: state.form.specs,
+    sizes: state.form.sizes,
+    availableDates: state.form.availableDates,
+  })) {
+    [...new Set(values.map((value) => value.trim()).filter(Boolean))].forEach((value) =>
+      formData.append(`${field}[]`, value),
+    )
   }
 
-  closeModal()
+  if (state.imageFile) {
+    formData.append('imageFile', state.imageFile)
+  } else if (state.form.image.trim()) {
+    formData.append('image', state.form.image.trim())
+  }
+
+  state.isSaving = true
+  state.formError = ''
+
+  try {
+    const equipment = await createEquipment(formData)
+    state.equipment.unshift(equipment)
+    closeModal()
+  } catch (error) {
+    state.formError = error.message || 'Could not save equipment.'
+  } finally {
+    state.isSaving = false
+  }
 }
 
-function removeEquipment(id) {
-  state.equipment = state.equipment.filter((item) => item.id !== id)
-}
+onMounted(loadEquipment)
 </script>
 
 <template>
@@ -408,6 +304,15 @@ function removeEquipment(id) {
           </div>
         </div>
 
+        <p v-if="state.isLoading" class="mt-6 text-sm text-slate-500">Loading equipment…</p>
+        <p
+          v-else-if="state.loadError"
+          class="mt-6 rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700"
+          role="alert"
+        >
+          Could not load equipment: {{ state.loadError }}
+        </p>
+
         <div class="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           <article
             v-for="item in filteredItems"
@@ -476,22 +381,6 @@ function removeEquipment(id) {
                 </span>
               </div>
 
-              <div class="mt-5 flex gap-2">
-                <button
-                  type="button"
-                  class="flex-1 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-100"
-                  @click="openEditModal(item)"
-                >
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  class="flex-1 rounded-full bg-rose-50 px-3 py-2 text-xs font-medium text-rose-600 transition hover:bg-rose-100"
-                  @click="removeEquipment(item.id)"
-                >
-                  Delete
-                </button>
-              </div>
             </div>
           </article>
         </div>
@@ -508,7 +397,7 @@ function removeEquipment(id) {
           <div>
             <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Equipment</p>
             <h2 class="mt-2 text-2xl font-bold text-slate-900">
-              {{ state.modalMode === 'edit' ? 'Edit equipment' : 'Add equipment' }}
+              Add equipment
             </h2>
           </div>
 
@@ -522,16 +411,6 @@ function removeEquipment(id) {
         </div>
 
         <form class="mt-6 grid gap-5 lg:grid-cols-2" @submit.prevent="saveEquipment">
-          <label class="block">
-            <span class="mb-2 block text-sm font-medium text-slate-700">ID</span>
-            <input
-              v-model="state.form.id"
-              type="text"
-              placeholder="atomic-redster"
-              class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-cyan-400 focus:bg-white focus:ring-4 focus:ring-cyan-100"
-            />
-          </label>
-
           <label class="block">
             <span class="mb-2 block text-sm font-medium text-slate-700">Category</span>
             <select
@@ -608,35 +487,132 @@ function removeEquipment(id) {
             />
           </label>
 
-          <label class="block lg:col-span-2">
-            <span class="mb-2 block text-sm font-medium text-slate-700">Specs</span>
-            <textarea
-              v-model="state.form.specs"
-              rows="4"
-              placeholder="Radius 16 m\nAir Tip rocker"
-              class="w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-cyan-400 focus:bg-white focus:ring-4 focus:ring-cyan-100"
-            ></textarea>
-          </label>
+          <section class="rounded-2xl border border-slate-200 bg-slate-50 p-4 lg:col-span-2">
+            <div class="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <h3 class="text-sm font-semibold text-slate-700">Specs</h3>
+                <p class="mt-1 text-xs text-slate-500">Add up to 3 short details.</p>
+              </div>
+              <span class="text-xs font-medium text-slate-500">
+                {{ state.form.specs.filter((spec) => spec.trim()).length }}/3
+              </span>
+            </div>
 
-          <label class="block lg:col-span-2">
-            <span class="mb-2 block text-sm font-medium text-slate-700">Sizes</span>
-            <textarea
-              v-model="state.form.sizes"
-              rows="3"
-              placeholder="146\n154\n162\n170"
-              class="w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-cyan-400 focus:bg-white focus:ring-4 focus:ring-cyan-100"
-            ></textarea>
-          </label>
+            <div class="space-y-2">
+              <div
+                v-for="(spec, index) in state.form.specs"
+                :key="`spec-${index}`"
+                class="flex items-center gap-2"
+              >
+                <input
+                  v-model="state.form.specs[index]"
+                  type="text"
+                  maxlength="80"
+                  :aria-label="`Specification ${index + 1}`"
+                  :placeholder="index === 0 ? 'Radius 16 m' : 'Another short detail'"
+                  class="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-100"
+                />
+                <button
+                  type="button"
+                  :aria-label="`Remove specification ${index + 1}`"
+                  class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-lg text-slate-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
+                  @click="removeListItem('specs', index)"
+                >
+                  −
+                </button>
+              </div>
+            </div>
 
-          <label class="block lg:col-span-2">
-            <span class="mb-2 block text-sm font-medium text-slate-700">Available dates</span>
-            <textarea
-              v-model="state.form.availableDates"
-              rows="3"
-              placeholder="2026-10-16\n2026-10-17\n2026-10-18"
-              class="w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-cyan-400 focus:bg-white focus:ring-4 focus:ring-cyan-100"
-            ></textarea>
-          </label>
+            <button
+              v-if="state.form.specs.length < 3"
+              type="button"
+              class="mt-3 inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-white px-3 py-2 text-sm font-medium text-cyan-700 transition hover:bg-cyan-50"
+              @click="addListItem('specs', 3)"
+            >
+              <span aria-hidden="true" class="text-base leading-none">+</span>
+              Add spec
+            </button>
+          </section>
+
+          <section class="rounded-2xl border border-slate-200 bg-slate-50 p-4 lg:col-span-2">
+            <div class="mb-3">
+              <h3 class="text-sm font-semibold text-slate-700">Sizes</h3>
+              <p class="mt-1 text-xs text-slate-500">Add each available size separately.</p>
+            </div>
+
+            <div class="flex flex-wrap gap-2">
+              <div
+                v-for="(size, index) in state.form.sizes"
+                :key="`size-${index}`"
+                class="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white p-1"
+              >
+                <input
+                  v-model="state.form.sizes[index]"
+                  type="text"
+                  maxlength="32"
+                  :aria-label="`Size ${index + 1}`"
+                  placeholder="156"
+                  class="w-20 rounded-lg px-2 py-1.5 text-center text-sm text-slate-900 outline-none focus:ring-2 focus:ring-cyan-100"
+                />
+                <button
+                  type="button"
+                  :aria-label="`Remove size ${index + 1}`"
+                  class="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
+                  @click="removeListItem('sizes', index)"
+                >
+                  −
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              class="mt-3 inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-white px-3 py-2 text-sm font-medium text-cyan-700 transition hover:bg-cyan-50"
+              @click="addListItem('sizes')"
+            >
+              <span aria-hidden="true" class="text-base leading-none">+</span>
+              Add size
+            </button>
+          </section>
+
+          <section class="rounded-2xl border border-slate-200 bg-slate-50 p-4 lg:col-span-2">
+            <div class="mb-3">
+              <h3 class="text-sm font-semibold text-slate-700">Available dates</h3>
+              <p class="mt-1 text-xs text-slate-500">Add dates when this equipment is available.</p>
+            </div>
+
+            <div class="space-y-2">
+              <div
+                v-for="(date, index) in state.form.availableDates"
+                :key="`date-${index}`"
+                class="flex items-center gap-2"
+              >
+                <input
+                  v-model="state.form.availableDates[index]"
+                  type="date"
+                  :aria-label="`Available date ${index + 1}`"
+                  class="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-100"
+                />
+                <button
+                  type="button"
+                  :aria-label="`Remove available date ${index + 1}`"
+                  class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-lg text-slate-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
+                  @click="removeListItem('availableDates', index)"
+                >
+                  −
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              class="mt-3 inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-white px-3 py-2 text-sm font-medium text-cyan-700 transition hover:bg-cyan-50"
+              @click="addListItem('availableDates')"
+            >
+              <span aria-hidden="true" class="text-base leading-none">+</span>
+              Add date
+            </button>
+          </section>
 
           <label class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 lg:col-span-2">
             <input v-model="state.form.availableNow" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
@@ -647,12 +623,17 @@ function removeEquipment(id) {
             <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
                 <p class="text-sm font-medium text-slate-700">Equipment image</p>
-                <p class="text-xs text-slate-500">Supports JPG, PNG, WEBP</p>
+                <p class="text-xs text-slate-500">JPG, PNG, or WEBP; max 5 MB</p>
               </div>
 
               <label class="cursor-pointer rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700">
                 Upload image
-                <input type="file" accept="image/*" class="hidden" @change="handleImageUpload" />
+                <input
+                  type="file"
+                  accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                  class="hidden"
+                  @change="handleImageUpload"
+                />
               </label>
             </div>
 
@@ -662,6 +643,7 @@ function removeEquipment(id) {
                 v-model="state.form.image"
                 type="text"
                 placeholder="https://..."
+                @input="handleImageUrlInput"
                 class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-cyan-400 focus:bg-white focus:ring-4 focus:ring-cyan-100"
               />
             </label>
@@ -671,12 +653,21 @@ function removeEquipment(id) {
             </div>
           </div>
 
+          <p
+            v-if="state.formError"
+            class="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700 lg:col-span-2"
+            role="alert"
+          >
+            {{ state.formError }}
+          </p>
+
           <div class="flex flex-wrap gap-3 lg:col-span-2">
             <button
               type="submit"
+              :disabled="state.isSaving"
               class="rounded-full bg-cyan-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-cyan-600/20 transition hover:bg-cyan-500"
             >
-              {{ state.modalMode === 'edit' ? 'Save changes' : 'Add equipment' }}
+              {{ state.isSaving ? 'Saving…' : 'Add equipment' }}
             </button>
 
             <button
