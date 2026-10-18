@@ -1,21 +1,53 @@
 services:
   backend:
     build:
-      context: ./backend        # Указываем относительный путь к папке бэкенда
-      dockerfile: Dockerfile     # Имя файла внутри папки ./backend
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: laravel_backend
     ports:
       - "8000:8000"
     volumes:
-      - ./backend:/app          # Связываем локальную папку backend с контейнером
+      - ./backend:/app
+      - backend_vendor:/app/vendor
+    environment:
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: ${DB_DATABASE:-alpenrent}
+      DB_USERNAME: ${DB_USERNAME:-alpenrent}
+      DB_PASSWORD: ${DB_PASSWORD:-alpenrent}
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   frontend:
     build:
-      context: ./frontend       # Указываем относительный путь к папке фронтенда
-      dockerfile: Dockerfile     # Имя файла внутри папки ./frontend
+      context: ./frontend
+      dockerfile: Dockerfile
     container_name: vue_frontend
     ports:
       - "5173:5173"
     volumes:
       - ./frontend:/app
       - /app/node_modules
+
+  postgres:
+    image: postgres:17-alpine
+    container_name: alpenrent_postgres
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-alpenrent}
+      POSTGRES_USER: ${DB_USERNAME:-alpenrent}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-alpenrent}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  backend_vendor:
+  postgres_data:

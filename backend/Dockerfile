@@ -9,12 +9,13 @@ RUN apt-get update && apt-get install -y \
     libonig-dev \
     libxml2-dev \
     libzip-dev \
+    libsqlite3-dev \
+    libpq-dev \
     zip \
     && rm -rf /var/lib/apt/lists/*
 
-# 2. Устанавливаем базовые расширения PHP, необходимые для работы Laravel
-# Добавлены pdo_sqlite, pdo_mysql и zip
-RUN docker-php-ext-install mbstring bcmath gd xml zip
+# 2. Устанавливаем базовые расширения PHP и PDO-драйверы для PostgreSQL и SQLite
+RUN docker-php-ext-install mbstring bcmath gd xml zip pdo_pgsql pdo_sqlite
 
 WORKDIR /app
 

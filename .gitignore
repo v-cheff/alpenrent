@@ -2,6 +2,11 @@
 /frontend/node_modules/
 /frontend/dist/
 
+# Docker Compose
+/.env
+/.env.*
+!/.env.example
+
 # PHP / Backend / Laravel
 /backend/vendor/
 /backend/.env
