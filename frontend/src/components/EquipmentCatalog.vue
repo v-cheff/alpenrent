@@ -3,6 +3,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { catalogTabs } from '../data/catalog'
 import { useBooking } from '../composables/useBooking'
+import { getEquipment } from '../api/equipment'
 import ProductCard from './ProductCard.vue'
 import Spinner from './Spinner.vue'
 
@@ -18,16 +19,8 @@ const loadEquipment = async () => {
   error.value = ''
 
   try {
-    const response = await fetch(
-      'http://127.0.0.1:8000/v1/equipment'
-    )
-
-    if (!response.ok) {
-      throw new Error(`HTTP error: ${response.status}`)
-    }
-
-    const data = await response.json()
-
+    const data = await getEquipment()
+    
     if (!Array.isArray(data)) {
       throw new Error('Invalid equipment data format')
     }
