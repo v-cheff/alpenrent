@@ -1,4 +1,5 @@
 <script setup>
+import { Pencil, Trash2 } from 'lucide-vue-next'
 import { badgeToneClass } from '../equipmentConstants.js'
 
 defineProps({
@@ -66,6 +67,25 @@ defineEmits(['edit', 'delete'])
 
       <div v-if="$slots.actions" class="mt-4 flex flex-wrap gap-2">
         <slot name="actions" />
+      </div>
+
+      <div v-else class="mt-4 flex items-center gap-2 border-t border-slate-200 pt-3">
+        <button
+          type="button"
+          class="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100 hover:text-slate-900 active:scale-[0.98]"
+          @click="$emit('edit', item)"
+        >
+          <Pencil class="h-3.5 w-3.5 text-cyan-600" />
+          Edit
+        </button>
+        <button
+          type="button"
+          class="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-600 transition hover:border-rose-300 hover:bg-rose-100 hover:text-rose-700 active:scale-[0.98]"
+          @click="$emit('delete', item)"
+        >
+          <Trash2 class="h-3.5 w-3.5 text-rose-500" />
+          Delete
+        </button>
       </div>
     </div>
   </article>

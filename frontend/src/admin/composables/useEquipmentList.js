@@ -1,5 +1,5 @@
 import { computed, reactive } from 'vue'
-import { getEquipment } from '../../api/equipment.js'
+import { getEquipment, deleteEquipment } from '../../api/equipment.js'
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10)
@@ -69,11 +69,30 @@ export function useEquipmentList() {
     list.items.unshift(item)
   }
 
+  function updateItem(updatedItem) {
+    const index = list.items.findIndex((item) => item.id === updatedItem.id)
+    if (index !== -1) {
+      list.items[index] = updatedItem
+    }
+  }
+
+  function removeItem(id) {
+    list.items = list.items.filter((item) => item.id !== id)
+  }
+
+  async function deleteEquipmentItem(id) {
+    await deleteEquipment(id)
+    removeItem(id)
+  }
+
   return {
     list,
     filteredItems,
     stats,
     load,
     prepend,
+    updateItem,
+    removeItem,
+    deleteEquipmentItem,
   }
 }

@@ -1,5 +1,5 @@
 import { computed, reactive } from 'vue'
-import { createEquipment } from '../../api/equipment.js'
+import { createEquipment, updateEquipment } from '../../api/equipment.js'
 import {
   IMAGE_MIME_TYPES,
   MAX_IMAGE_BYTES,
@@ -54,7 +54,7 @@ function revokePreview(url) {
   }
 }
 
-export function useEquipmentForm({ onCreated } = {}) {
+export function useEquipmentForm({ onCreated, onUpdated } = {}) {
   const editor = reactive({
     isOpen: false,
     mode: 'create',
@@ -147,7 +147,7 @@ export function useEquipmentForm({ onCreated } = {}) {
     }
 
     const hasImage = Boolean(editor.imageFile || editor.form.image.trim())
-    if (isCreate.value && !hasImage) {
+    if (!hasImage) {
       return 'Add an image file or image URL.'
     }
 
@@ -202,7 +202,11 @@ export function useEquipmentForm({ onCreated } = {}) {
 
     try {
       if (editor.mode === 'edit') {
-        editor.formError = 'Editing is not available yet.'
+        const formData = buildFormData()
+        formData.append('_method', 'PUT')
+        const equipment = await updateEquipment(editor.editingId, formData)
+        onUpdated?.(equipment)
+        close()
         return
       }
 
