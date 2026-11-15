@@ -1,5 +1,6 @@
 import { computed, reactive } from 'vue'
 import { equipment, locations } from '../data/catalog'
+import { createBooking } from '../api/bookings.js'
 import { useAuth } from './useAuth'
 
 const today = new Date()
@@ -26,6 +27,8 @@ const state = reactive({
   sizingOpen: false,
   sizePickerOpen: false,
   bookingSuccess: false,
+  bookingSubmitting: false,
+  bookingError: '',
 })
 
 function nightsBetween(start, end) {
@@ -91,6 +94,7 @@ export function useBooking() {
 
     const item = selectedItem.value
     state.selectedSize = item?.sizes?.[0] ?? ''
+    state.bookingError = ''
     state.sizePickerOpen = true
     return true
   }
@@ -110,21 +114,48 @@ export function useBooking() {
     }
 
     if (selectedItem.value) {
+      state.bookingError = ''
       state.sizePickerOpen = true
     }
     return true
   }
 
-  function confirmBooking() {
+  async function confirmBooking() {
+    if (state.bookingSubmitting) {
+      return false
+    }
+
     if (!isAuthenticated.value) {
       state.sizePickerOpen = false
       openLogin('Please sign in or register to complete your booking.')
       return false
     }
 
-    state.sizePickerOpen = false
-    state.bookingSuccess = true
-    return true
+    if (!selectedItem.value || !state.selectedSize) {
+      state.bookingError = 'Please select an equipment size before continuing.'
+      return false
+    }
+
+    state.bookingSubmitting = true
+    state.bookingError = ''
+
+    try {
+      await createBooking({
+        equipmentId: selectedItem.value.id,
+        size: state.selectedSize,
+        startDate: state.startDate,
+        endDate: state.endDate,
+      })
+
+      state.sizePickerOpen = false
+      state.bookingSuccess = true
+      return true
+    } catch (error) {
+      state.bookingError = error.message || 'Could not complete the booking. Please try again.'
+      return false
+    } finally {
+      state.bookingSubmitting = false
+    }
   }
 
   function checkAvailability() {

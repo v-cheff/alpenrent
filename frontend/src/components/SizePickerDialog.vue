@@ -21,11 +21,18 @@ const { isAuthenticated } = useAuth()
 const open = computed(() => state.sizePickerOpen && !!selectedItem.value && isAuthenticated.value)
 
 function close() {
+  if (state.bookingSubmitting) return
+
   state.sizePickerOpen = false
 }
 
-function confirm() {
-  confirmBooking()
+function selectSize(size) {
+  state.selectedSize = size
+  state.bookingError = ''
+}
+
+async function confirm() {
+  await confirmBooking()
 }
 </script>
 
@@ -59,7 +66,8 @@ function confirm() {
                 ? 'bg-slateink text-white ring-slateink'
                 : 'bg-slate-50 text-slate-700 ring-slate-200 hover:bg-white'
             "
-            @click="state.selectedSize = size"
+            :disabled="state.bookingSubmitting"
+            @click="selectSize(size)"
           >
             {{ size }}
           </button>
@@ -100,12 +108,21 @@ function confirm() {
           </div>
         </dl>
 
+        <p
+          v-if="state.bookingError"
+          class="mt-4 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700"
+          role="alert"
+        >
+          {{ state.bookingError }}
+        </p>
+
         <button
           type="button"
-          class="mt-6 w-full rounded-2xl bg-alpine-600 py-3 text-sm font-bold text-white hover:bg-alpine-700"
+          class="mt-6 w-full rounded-2xl bg-alpine-600 py-3 text-sm font-bold text-white hover:bg-alpine-700 disabled:cursor-not-allowed disabled:opacity-60"
+          :disabled="state.bookingSubmitting || !state.selectedSize"
           @click="confirm"
         >
-          Confirm size {{ state.selectedSize }} & continue
+          {{ state.bookingSubmitting ? 'Booking...' : `Confirm size ${state.selectedSize} & continue` }}
         </button>
       </div>
     </div>
