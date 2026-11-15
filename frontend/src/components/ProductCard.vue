@@ -59,7 +59,7 @@ const badgeClass = {
       <button
         type="button"
         class="mt-5 w-full rounded-2xl bg-slateink px-4 py-3 text-sm font-bold text-white transition hover:bg-slate-800"
-        @click="selectItem(item.id)"
+        @click="selectItem(item.id, item)"
       >
         Select Size & Rent
       </button>

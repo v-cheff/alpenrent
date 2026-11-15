@@ -1,5 +1,6 @@
 import { computed, reactive } from 'vue'
 import { equipment, locations } from '../data/catalog'
+import { useAuth } from './useAuth'
 
 const today = new Date()
 const pad = (n) => String(n).padStart(2, '0')
@@ -19,10 +20,12 @@ const state = reactive({
   skill: 'intermediate',
   insurance: false,
   selected: null,
+  selectedItemData: null,
   selectedSize: '',
   availabilityChecked: false,
   sizingOpen: false,
   sizePickerOpen: false,
+  bookingSuccess: false,
 })
 
 function nightsBetween(start, end) {
@@ -33,13 +36,18 @@ function nightsBetween(start, end) {
 }
 
 export function useBooking() {
+  const { isAuthenticated, openLogin } = useAuth()
+
   const durationDays = computed(() => nightsBetween(state.startDate, state.endDate))
   const location = computed(
     () => locations.find((l) => l.id === state.locationId) ?? locations[0],
   )
-  const selectedItem = computed(
-    () => equipment.find((item) => item.id === state.selected) ?? null,
-  )
+  const selectedItem = computed(() => {
+    if (state.selectedItemData && state.selectedItemData.id === state.selected) {
+      return state.selectedItemData
+    }
+    return equipment.find((item) => item.id === state.selected) ?? null
+  })
 
   const equipmentTotal = computed(() => {
     if (!selectedItem.value) return 0
@@ -62,11 +70,61 @@ export function useBooking() {
     }
   }
 
-  function selectItem(id) {
+  function selectItem(id, itemData = null) {
+    if (itemData) {
+      state.selectedItemData = itemData
+    }
     state.selected = id
-    const item = equipment.find((e) => e.id === id)
+
+    if (!isAuthenticated.value) {
+      // Functional requirement: booking modal MUST NOT open for unauthorized users
+      state.sizePickerOpen = false
+      openLogin(
+        'Please sign in or register to book equipment.',
+        () => {
+          // Automatically resume booking upon successful authorization
+          state.sizePickerOpen = true
+        },
+      )
+      return false
+    }
+
+    const item = selectedItem.value
     state.selectedSize = item?.sizes?.[0] ?? ''
     state.sizePickerOpen = true
+    return true
+  }
+
+  function openSizePicker() {
+    if (!isAuthenticated.value) {
+      state.sizePickerOpen = false
+      openLogin(
+        'Please sign in or register to book equipment.',
+        () => {
+          if (selectedItem.value) {
+            state.sizePickerOpen = true
+          }
+        },
+      )
+      return false
+    }
+
+    if (selectedItem.value) {
+      state.sizePickerOpen = true
+    }
+    return true
+  }
+
+  function confirmBooking() {
+    if (!isAuthenticated.value) {
+      state.sizePickerOpen = false
+      openLogin('Please sign in or register to complete your booking.')
+      return false
+    }
+
+    state.sizePickerOpen = false
+    state.bookingSuccess = true
+    return true
   }
 
   function checkAvailability() {
@@ -86,6 +144,8 @@ export function useBooking() {
     deposit,
     setDates,
     selectItem,
+    openSizePicker,
+    confirmBooking,
     checkAvailability,
   }
 }

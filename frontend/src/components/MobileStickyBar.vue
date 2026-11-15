@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useBooking } from '../composables/useBooking'
 
-const { state, selectedItem, durationDays, grandTotal, location } = useBooking()
+const { state, selectedItem, durationDays, grandTotal, location, openSizePicker } = useBooking()
 
 const visible = computed(() => !!selectedItem.value)
 </script>
@@ -22,7 +22,7 @@ const visible = computed(() => !!selectedItem.value)
       <button
         type="button"
         class="shrink-0 rounded-xl bg-alpine-600 px-4 py-2.5 text-sm font-bold text-white"
-        @click="state.sizePickerOpen = true"
+        @click="openSizePicker"
       >
         €{{ grandTotal }}
       </button>

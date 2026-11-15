@@ -2,17 +2,30 @@
 import { computed } from 'vue'
 import { X } from 'lucide-vue-next'
 import { useBooking } from '../composables/useBooking'
+import { useAuth } from '../composables/useAuth'
 
-const { state, selectedItem, durationDays, equipmentTotal, insuranceTotal, grandTotal, deposit } = useBooking()
+const {
+  state,
+  selectedItem,
+  durationDays,
+  equipmentTotal,
+  insuranceTotal,
+  grandTotal,
+  deposit,
+  confirmBooking,
+} = useBooking()
 
-const open = computed(() => state.sizePickerOpen && !!selectedItem.value)
+const { isAuthenticated } = useAuth()
+
+// The booking modal strictly does not open if the user is not authenticated
+const open = computed(() => state.sizePickerOpen && !!selectedItem.value && isAuthenticated.value)
 
 function close() {
   state.sizePickerOpen = false
 }
 
 function confirm() {
-  state.sizePickerOpen = false
+  confirmBooking()
 }
 </script>
 
