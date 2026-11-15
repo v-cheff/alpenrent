@@ -1,17 +1,30 @@
 <script setup>
-import { Pencil, Trash2 } from 'lucide-vue-next'
+import { ref } from 'vue'
+import { CalendarDays, ChevronDown, Pencil, Trash2 } from 'lucide-vue-next'
 import { badgeToneClass } from '../equipmentConstants.js'
+import EquipmentAvailabilityCalendar from './EquipmentAvailabilityCalendar.vue'
 
-defineProps({
+const props = defineProps({
   item: { type: Object, required: true },
 })
 
-defineEmits(['edit', 'delete'])
+const emit = defineEmits(['edit', 'delete'])
+const optionsMenu = ref(null)
+const isOptionsOpen = ref(false)
+const isCalendarOpen = ref(false)
+
+function runAction(action) {
+  emit(action, props.item)
+  optionsMenu.value.open = false
+}
 </script>
 
 <template>
-  <article class="overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
-    <div class="relative h-52 overflow-hidden">
+  <article
+    class="relative rounded-3xl border border-slate-200 bg-slate-50 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+    :class="isOptionsOpen ? 'z-30' : 'z-0'"
+  >
+    <div class="relative h-52 overflow-hidden rounded-t-3xl">
       <img :src="item.image" :alt="item.name" class="h-full w-full object-cover" />
       <div class="absolute left-3 top-3 flex items-center gap-2">
         <span
@@ -65,28 +78,52 @@ defineEmits(['edit', 'delete'])
         </span>
       </div>
 
-      <div v-if="$slots.actions" class="mt-4 flex flex-wrap gap-2">
-        <slot name="actions" />
-      </div>
-
-      <div v-else class="mt-4 flex items-center gap-2 border-t border-slate-200 pt-3">
+      <div class="mt-4 flex items-stretch gap-2 border-t border-slate-200 pt-3">
         <button
           type="button"
-          class="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100 hover:text-slate-900 active:scale-[0.98]"
-          @click="$emit('edit', item)"
+          class="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-cyan-600 px-3 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-cyan-500 active:scale-[0.98]"
+          @click="isCalendarOpen = true"
         >
-          <Pencil class="h-3.5 w-3.5 text-cyan-600" />
-          Edit
+          <CalendarDays class="h-4 w-4 shrink-0" />
+          View availability calendar
         </button>
-        <button
-          type="button"
-          class="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-600 transition hover:border-rose-300 hover:bg-rose-100 hover:text-rose-700 active:scale-[0.98]"
-          @click="$emit('delete', item)"
+        <details
+          ref="optionsMenu"
+          class="relative shrink-0"
+          @toggle="isOptionsOpen = optionsMenu.open"
         >
-          <Trash2 class="h-3.5 w-3.5 text-rose-500" />
-          Delete
-        </button>
+          <summary
+            class="flex h-full cursor-pointer list-none items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100 [&::-webkit-details-marker]:hidden"
+          >
+            Options
+            <ChevronDown class="h-4 w-4" />
+          </summary>
+          <div class="absolute right-0 top-full z-20 mt-2 w-40 overflow-hidden rounded-xl border border-slate-200 bg-white p-1 shadow-xl">
+            <button
+              type="button"
+              class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-100"
+              @click="runAction('edit')"
+            >
+              <Pencil class="h-4 w-4 text-cyan-600" />
+              Edit
+            </button>
+            <button
+              type="button"
+              class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-rose-600 hover:bg-rose-50"
+              @click="runAction('delete')"
+            >
+              <Trash2 class="h-4 w-4" />
+              Delete
+            </button>
+          </div>
+        </details>
       </div>
     </div>
+
+    <EquipmentAvailabilityCalendar
+      v-if="isCalendarOpen"
+      :item="item"
+      @close="isCalendarOpen = false"
+    />
   </article>
 </template>
