@@ -18,6 +18,22 @@ class BookingTest extends TestCase
         $this->getJson('/v1/bookings')->assertUnauthorized();
     }
 
+    public function test_owner_account_cannot_make_bookings(): void
+    {
+        [, $token] = $this->authenticatedUser('owner@example.com', User::ROLE_OWNER);
+        $this->createEquipment();
+
+        $this->withToken($token)->getJson('/v1/bookings')->assertForbidden();
+        $this->withToken($token)->postJson('/v1/bookings', [
+            'equipmentId' => 'test-ski',
+            'size' => '160',
+            'startDate' => '2026-12-01',
+            'endDate' => '2026-12-04',
+        ])->assertForbidden();
+
+        $this->assertDatabaseCount('bookings', 0);
+    }
+
     public function test_user_can_create_and_list_their_bookings(): void
     {
         [$user, $token] = $this->authenticatedUser();
@@ -269,15 +285,48 @@ class BookingTest extends TestCase
         ]);
     }
 
+    public function test_owner_sees_incoming_bookings_only_for_their_equipment(): void
+    {
+        [$owner, $ownerToken] = $this->authenticatedUser('owner@example.com', User::ROLE_OWNER);
+        [$renter, $renterToken] = $this->authenticatedUser('renter@example.com');
+        [$otherOwner] = $this->authenticatedUser('other@example.com', User::ROLE_OWNER);
+
+        $point = $owner->rentalPoints()->create(['name' => 'Innsbruck Store']);
+        $otherPoint = $otherOwner->rentalPoints()->create(['name' => 'Other Store']);
+        $this->createEquipment(['id' => 'owner-ski', 'rental_point_id' => $point->id]);
+        $this->createEquipment(['id' => 'other-ski', 'rental_point_id' => $otherPoint->id]);
+
+        foreach (['owner-ski', 'other-ski'] as $equipmentId) {
+            $this->withToken($renterToken)->postJson('/v1/bookings', [
+                'equipmentId' => $equipmentId,
+                'size' => '160',
+                'startDate' => '2026-12-01',
+                'endDate' => '2026-12-04',
+            ])->assertCreated();
+        }
+
+        $this->withToken($ownerToken)
+            ->getJson('/v1/my/bookings')
+            ->assertOk()
+            ->assertJsonCount(1)
+            ->assertJsonPath('0.equipmentId', 'owner-ski')
+            ->assertJsonPath('0.equipment.rentalPoint.name', 'Innsbruck Store')
+            ->assertJsonPath('0.renter.id', $renter->id)
+            ->assertJsonPath('0.renter.email', 'renter@example.com');
+
+        $this->withoutToken()->getJson('/v1/my/bookings')->assertUnauthorized();
+    }
+
     /**
      * @return array{0: User, 1: string}
      */
-    private function authenticatedUser(string $email = 'jane@example.com'): array
+    private function authenticatedUser(string $email = 'jane@example.com', string $role = User::ROLE_RENTER): array
     {
         $user = User::query()->create([
             'name' => 'Jane Doe',
             'email' => $email,
             'password' => Hash::make('password123'),
+            'role' => $role,
         ]);
 
         $token = 'token-'.$email;

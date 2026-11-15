@@ -3,9 +3,12 @@
 namespace Tests\Feature;
 
 use App\Models\Equipment;
+use App\Models\RentalPoint;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -13,21 +16,22 @@ class EquipmentTest extends TestCase
 {
     use RefreshDatabase;
 
+    private const PIXEL_PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jCecAAAAASUVORK5CYII=';
+
     public function test_equipment_can_be_created_with_an_uploaded_image(): void
     {
         $this->assertSame('sqlite', DB::connection()->getDriverName());
         Storage::fake('public');
+        [, $token, $point] = $this->owner();
 
-        $response = $this->post('/v1/equipment', [
+        $response = $this->withToken($token)->post('/v1/equipment', [
+            'rentalPointId' => $point->id,
             'name' => 'Test Ski Set',
             'category' => 'ski',
             'categoryLabel' => 'All-Mountain Ski Set',
             'badge' => 'New',
             'badgeTone' => 'new',
-            'imageFile' => UploadedFile::fake()->createWithContent(
-                'test-ski.png',
-                base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jCecAAAAASUVORK5CYII='),
-            ),
+            'imageFile' => $this->pixel('test-ski.png'),
             'specs' => ['Radius 14 m', 'Carbon core'],
             'dailyRate' => 35,
             'deposit' => 100,
@@ -38,12 +42,15 @@ class EquipmentTest extends TestCase
 
         $response->assertCreated()
             ->assertJsonPath('id', 'test-ski-set')
+            ->assertJsonPath('rentalPointId', $point->id)
+            ->assertJsonPath('rentalPoint.name', 'Innsbruck Store')
             ->assertJsonPath('categoryLabel', 'All-Mountain Ski Set')
             ->assertJsonPath('specs.0', 'Radius 14 m')
             ->assertJsonPath('availableNow', true);
 
         $this->assertDatabaseHas('equipment', [
             'id' => 'test-ski-set',
+            'rental_point_id' => $point->id,
             'name' => 'Test Ski Set',
             'category' => 'ski',
         ]);
@@ -57,7 +64,10 @@ class EquipmentTest extends TestCase
 
     public function test_equipment_can_be_created_with_an_image_url(): void
     {
-        $response = $this->postJson('/v1/equipment', [
+        [, $token, $point] = $this->owner();
+
+        $response = $this->withToken($token)->postJson('/v1/equipment', [
+            'rentalPointId' => $point->id,
             'name' => 'Test Snowboard',
             'category' => 'board',
             'image' => 'https://example.com/snowboard.jpg',
@@ -74,9 +84,49 @@ class EquipmentTest extends TestCase
             ->assertJsonPath('availableDates', []);
     }
 
-    public function test_equipment_creation_requires_an_image_and_valid_category(): void
+    public function test_guest_cannot_create_equipment(): void
     {
         $this->postJson('/v1/equipment', [
+            'name' => 'Guest Ski',
+            'category' => 'ski',
+            'image' => 'https://example.com/ski.jpg',
+            'dailyRate' => 25,
+            'deposit' => 80,
+            'availableNow' => true,
+        ])->assertUnauthorized();
+
+        $this->assertDatabaseCount('equipment', 0);
+    }
+
+    public function test_equipment_requires_one_of_the_users_own_rental_points(): void
+    {
+        [, $token] = $this->owner('alice@example.com');
+        [, , $otherPoint] = $this->owner('bob@example.com');
+
+        $payload = [
+            'name' => 'Sneaky Ski',
+            'category' => 'ski',
+            'image' => 'https://example.com/ski.jpg',
+            'dailyRate' => 25,
+            'deposit' => 80,
+            'availableNow' => true,
+        ];
+
+        $this->withToken($token)->postJson('/v1/equipment', $payload)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('rentalPointId');
+
+        $this->withToken($token)->postJson('/v1/equipment', [...$payload, 'rentalPointId' => $otherPoint->id])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('rentalPointId');
+    }
+
+    public function test_equipment_creation_requires_an_image_and_valid_category(): void
+    {
+        [, $token, $point] = $this->owner();
+
+        $this->withToken($token)->postJson('/v1/equipment', [
+            'rentalPointId' => $point->id,
             'name' => 'Invalid Equipment',
             'category' => 'unknown',
             'specs' => [],
@@ -91,7 +141,10 @@ class EquipmentTest extends TestCase
 
     public function test_equipment_creation_rejects_more_than_three_specs(): void
     {
-        $this->postJson('/v1/equipment', [
+        [, $token, $point] = $this->owner();
+
+        $this->withToken($token)->postJson('/v1/equipment', [
+            'rentalPointId' => $point->id,
             'name' => 'Too Many Specs',
             'category' => 'ski',
             'image' => 'https://example.com/ski.jpg',
@@ -103,43 +156,31 @@ class EquipmentTest extends TestCase
             ->assertJsonValidationErrors('specs');
     }
 
-    public function test_equipment_list_returns_saved_records(): void
+    public function test_equipment_list_returns_saved_records_with_their_rental_point(): void
     {
-        Equipment::query()->create([
+        [, , $point] = $this->owner();
+        $this->createEquipment($point, [
             'id' => 'saved-board',
-            'name' => 'Saved Board',
             'category' => 'board',
-            'category_label' => 'Snowboard',
-            'image' => 'https://example.com/board.jpg',
-            'specs' => ['Directional twin'],
             'daily_rate' => 30,
-            'deposit' => 90,
-            'sizes' => ['156'],
-            'available_now' => true,
-            'available_dates' => [],
         ]);
 
         $this->getJson('/v1/equipment')
             ->assertOk()
             ->assertJsonPath('0.id', 'saved-board')
             ->assertJsonPath('0.dailyRate', 30)
+            ->assertJsonPath('0.rentalPoint.name', 'Innsbruck Store')
             ->assertJsonPath('0.availableDates', []);
     }
 
     public function test_equipment_can_be_retrieved_by_id(): void
     {
-        Equipment::query()->create([
+        [, , $point] = $this->owner();
+        $this->createEquipment($point, [
             'id' => 'detail-item',
             'name' => 'Detail Item',
             'category' => 'boots',
-            'category_label' => 'Ski Boots',
-            'image' => 'https://example.com/boots.jpg',
-            'specs' => ['Flex 110'],
             'daily_rate' => 20,
-            'deposit' => 60,
-            'sizes' => ['27.5'],
-            'available_now' => true,
-            'available_dates' => ['2026-12-01'],
         ]);
 
         $this->getJson('/v1/equipment/detail-item')
@@ -147,26 +188,37 @@ class EquipmentTest extends TestCase
             ->assertJsonPath('id', 'detail-item')
             ->assertJsonPath('name', 'Detail Item')
             ->assertJsonPath('category', 'boots')
+            ->assertJsonPath('rentalPointId', $point->id)
             ->assertJsonPath('dailyRate', 20);
+    }
+
+    public function test_owner_sees_only_equipment_at_their_rental_points(): void
+    {
+        [, $token, $point] = $this->owner('alice@example.com');
+        [, , $otherPoint] = $this->owner('bob@example.com');
+        $this->createEquipment($point, ['id' => 'alice-ski']);
+        $this->createEquipment($otherPoint, ['id' => 'bob-ski']);
+
+        $this->withToken($token)
+            ->getJson('/v1/my/equipment')
+            ->assertOk()
+            ->assertJsonCount(1)
+            ->assertJsonPath('0.id', 'alice-ski');
+
+        $this->withoutToken()->getJson('/v1/my/equipment')->assertUnauthorized();
     }
 
     public function test_equipment_can_be_updated_without_replacing_image(): void
     {
-        Equipment::query()->create([
+        [, $token, $point] = $this->owner();
+        $this->createEquipment($point, [
             'id' => 'edit-ski',
             'name' => 'Old Ski Name',
-            'category' => 'ski',
-            'category_label' => 'Old Label',
-            'image' => 'https://example.com/ski.jpg',
-            'specs' => ['Old spec'],
             'daily_rate' => 30,
-            'deposit' => 100,
-            'sizes' => ['160'],
-            'available_now' => true,
-            'available_dates' => [],
+            'specs' => ['Old spec'],
         ]);
 
-        $response = $this->putJson('/v1/equipment/edit-ski', [
+        $response = $this->withToken($token)->putJson('/v1/equipment/edit-ski', [
             'name' => 'Updated Ski Name',
             'dailyRate' => 45.5,
             'specs' => ['New spec 1', 'New spec 2'],
@@ -189,34 +241,56 @@ class EquipmentTest extends TestCase
         ]);
     }
 
+    public function test_owner_can_move_equipment_between_their_rental_points(): void
+    {
+        [$user, $token, $point] = $this->owner();
+        $secondPoint = $user->rentalPoints()->create(['name' => 'Second Store']);
+        $this->createEquipment($point, ['id' => 'moving-ski']);
+
+        $this->withToken($token)
+            ->putJson('/v1/equipment/moving-ski', ['rentalPointId' => $secondPoint->id])
+            ->assertOk()
+            ->assertJsonPath('rentalPointId', $secondPoint->id)
+            ->assertJsonPath('rentalPoint.name', 'Second Store');
+    }
+
+    public function test_user_cannot_update_or_delete_another_owners_equipment(): void
+    {
+        [, $token] = $this->owner('alice@example.com');
+        [, , $otherPoint] = $this->owner('bob@example.com');
+        $this->createEquipment($otherPoint, ['id' => 'bob-ski', 'name' => 'Bob Ski']);
+
+        $this->withToken($token)
+            ->putJson('/v1/equipment/bob-ski', ['name' => 'Hijacked'])
+            ->assertNotFound();
+
+        $this->withToken($token)
+            ->deleteJson('/v1/equipment/bob-ski')
+            ->assertNotFound();
+
+        $this->assertDatabaseHas('equipment', ['id' => 'bob-ski', 'name' => 'Bob Ski']);
+    }
+
     public function test_equipment_can_be_updated_with_new_uploaded_image_and_deletes_old_image(): void
     {
         Storage::fake('public');
+        [, $token, $point] = $this->owner();
 
-        $oldImageFile = UploadedFile::fake()->createWithContent('old.png', base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jCecAAAAASUVORK5CYII='));
-        $storedOldPath = $oldImageFile->store('equipment', 'public');
+        $storedOldPath = $this->pixel('old.png')->store('equipment', 'public');
         $oldImageUrl = url(Storage::disk('public')->url($storedOldPath));
 
-        Equipment::query()->create([
+        $this->createEquipment($point, [
             'id' => 'edit-image-item',
             'name' => 'Item With Image',
-            'category' => 'board',
-            'category_label' => 'Snowboard',
             'image' => $oldImageUrl,
-            'specs' => [],
-            'daily_rate' => 28,
-            'deposit' => 85,
-            'sizes' => ['158'],
-            'available_now' => true,
-            'available_dates' => [],
         ]);
 
         Storage::disk('public')->assertExists($storedOldPath);
 
-        $response = $this->post('/v1/equipment/edit-image-item', [
+        $response = $this->withToken($token)->post('/v1/equipment/edit-image-item', [
             '_method' => 'PUT',
             'name' => 'Item With New Image',
-            'imageFile' => UploadedFile::fake()->createWithContent('new.png', base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jCecAAAAASUVORK5CYII=')),
+            'imageFile' => $this->pixel('new.png'),
         ], ['Accept' => 'application/json']);
 
         $response->assertOk()
@@ -236,29 +310,21 @@ class EquipmentTest extends TestCase
     public function test_equipment_can_be_deleted_and_removes_stored_image(): void
     {
         Storage::fake('public');
+        [, $token, $point] = $this->owner();
 
-        $imageFile = UploadedFile::fake()->createWithContent('item-to-delete.png', base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jCecAAAAASUVORK5CYII='));
-        $storedPath = $imageFile->store('equipment', 'public');
+        $storedPath = $this->pixel('item-to-delete.png')->store('equipment', 'public');
         $imageUrl = url(Storage::disk('public')->url($storedPath));
 
-        Equipment::query()->create([
+        $this->createEquipment($point, [
             'id' => 'to-delete-item',
-            'name' => 'To Delete Item',
-            'category' => 'kids',
-            'category_label' => 'Kids Gear',
             'image' => $imageUrl,
-            'specs' => [],
-            'daily_rate' => 15,
-            'deposit' => 50,
-            'sizes' => ['120'],
-            'available_now' => true,
-            'available_dates' => [],
         ]);
 
         Storage::disk('public')->assertExists($storedPath);
 
-        $response = $this->deleteJson('/v1/equipment/to-delete-item');
-        $response->assertOk()
+        $this->withToken($token)
+            ->deleteJson('/v1/equipment/to-delete-item')
+            ->assertOk()
             ->assertJsonPath('message', 'Equipment deleted successfully.');
 
         $this->assertDatabaseMissing('equipment', [
@@ -266,5 +332,48 @@ class EquipmentTest extends TestCase
         ]);
 
         Storage::disk('public')->assertMissing($storedPath);
+    }
+
+    /**
+     * @return array{0: User, 1: string, 2: RentalPoint}
+     */
+    private function owner(string $email = 'owner@example.com'): array
+    {
+        $user = User::query()->create([
+            'name' => 'Owner',
+            'email' => $email,
+            'password' => Hash::make('password123'),
+            'role' => User::ROLE_OWNER,
+        ]);
+
+        $token = 'token-'.$email;
+        $user->tokens()->create(['token' => hash('sha256', $token)]);
+
+        $point = $user->rentalPoints()->create(['name' => 'Innsbruck Store']);
+
+        return [$user, $token, $point];
+    }
+
+    private function createEquipment(RentalPoint $point, array $overrides = []): Equipment
+    {
+        return Equipment::query()->create(array_merge([
+            'id' => 'test-ski',
+            'rental_point_id' => $point->id,
+            'name' => 'Test Ski',
+            'category' => 'ski',
+            'category_label' => 'Ski Set',
+            'image' => 'https://example.com/ski.jpg',
+            'specs' => [],
+            'daily_rate' => 35,
+            'deposit' => 100,
+            'sizes' => ['160'],
+            'available_now' => true,
+            'available_dates' => [],
+        ], $overrides));
+    }
+
+    private function pixel(string $name): UploadedFile
+    {
+        return UploadedFile::fake()->createWithContent($name, base64_decode(self::PIXEL_PNG));
     }
 }

@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Equipment extends Model
@@ -15,6 +17,7 @@ class Equipment extends Model
 
     protected $fillable = [
         'id',
+        'rental_point_id',
         'name',
         'category',
         'category_label',
@@ -41,15 +44,37 @@ class Equipment extends Model
         ];
     }
 
+    public function rentalPoint(): BelongsTo
+    {
+        return $this->belongsTo(RentalPoint::class);
+    }
+
     public function bookings(): HasMany
     {
         return $this->hasMany(Booking::class);
+    }
+
+    /**
+     * Equipment listed at any rental point owned by the given user.
+     */
+    public function scopeOwnedBy(Builder $query, User $user): Builder
+    {
+        return $query->whereHas('rentalPoint', fn (Builder $points) => $points->where('user_id', $user->id));
+    }
+
+    public function isOwnedBy(User $user): bool
+    {
+        return $this->rentalPoint !== null && $this->rentalPoint->user_id === $user->id;
     }
 
     public function toApiArray(): array
     {
         return [
             'id' => $this->id,
+            'rentalPointId' => $this->rental_point_id,
+            'rentalPoint' => $this->relationLoaded('rentalPoint') && $this->rentalPoint
+                ? $this->rentalPoint->toApiArray()
+                : null,
             'name' => $this->name,
             'category' => $this->category,
             'categoryLabel' => $this->category_label,

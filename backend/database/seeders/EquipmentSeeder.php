@@ -3,12 +3,52 @@
 namespace Database\Seeders;
 
 use App\Models\Equipment;
+use App\Models\RentalPoint;
+use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class EquipmentSeeder extends Seeder
 {
+    /**
+     * Demo owner account that runs the seeded rental points (password: "password").
+     */
+    public const OWNER_EMAIL = 'owner@example.com';
+
     public function run(): void
     {
+        $owner = User::query()->firstOrCreate(
+            ['email' => self::OWNER_EMAIL],
+            ['name' => 'AlpenRent Tyrol', 'password' => Hash::make('password'), 'role' => User::ROLE_OWNER],
+        );
+
+        // The account may have been created before roles existed.
+        if (! $owner->isOwner()) {
+            $owner->update(['role' => User::ROLE_OWNER]);
+        }
+
+        $points = collect([
+            'innsbruck' => ['name' => 'Innsbruck Central Store', 'address' => 'Maria-Theresien-Straße 1, Innsbruck', 'opening_hours' => '08:00–20:00'],
+            'stanton' => ['name' => 'St. Anton Base Station', 'address' => 'Dorfstraße 10, St. Anton am Arlberg', 'opening_hours' => '07:30–18:00'],
+            'solden' => ['name' => 'Sölden Glacier Hub', 'address' => 'Gaislachkoglbahn valley station, Sölden', 'opening_hours' => '08:00–18:30'],
+            'kitz' => ['name' => 'Kitzbühel Town Shop', 'address' => 'Hahnenkammstraße 5, Kitzbühel', 'opening_hours' => '08:00–19:00'],
+        ])->map(fn (array $point) => RentalPoint::query()->firstOrCreate(
+            ['user_id' => $owner->id, 'name' => $point['name']],
+            $point,
+        ));
+
+        $pointByEquipment = [
+            'atomic-redster' => 'innsbruck',
+            'rossignol-experience' => 'innsbruck',
+            'head-kore' => 'stanton',
+            'burton-custom' => 'stanton',
+            'jones-mind' => 'solden',
+            'lange-shadow' => 'solden',
+            'poc-obex' => 'kitz',
+            'kids-atomic' => 'kitz',
+            'kids-burton' => 'innsbruck',
+        ];
+
         $equipment = [
             [
                 'id' => 'atomic-redster',
@@ -148,7 +188,17 @@ class EquipmentSeeder extends Seeder
         ];
 
         foreach ($equipment as $item) {
-            Equipment::query()->firstOrCreate(['id' => $item['id']], $item);
+            $pointId = $points[$pointByEquipment[$item['id']] ?? 'innsbruck']->id;
+
+            $record = Equipment::query()->firstOrCreate(
+                ['id' => $item['id']],
+                [...$item, 'rental_point_id' => $pointId],
+            );
+
+            // Equipment seeded before rental points existed has no owner yet.
+            if ($record->rental_point_id === null) {
+                $record->update(['rental_point_id' => $pointId]);
+            }
         }
     }
 }

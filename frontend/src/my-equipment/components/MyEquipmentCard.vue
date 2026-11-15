@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue'
-import { CalendarDays, ChevronDown, Pencil, Trash2 } from 'lucide-vue-next'
+import { CalendarDays, ChevronDown, MapPin, Pencil, Trash2 } from 'lucide-vue-next'
 import { badgeToneClass } from '../equipmentConstants.js'
 import EquipmentAvailabilityCalendar from './EquipmentAvailabilityCalendar.vue'
 
@@ -46,6 +46,10 @@ function runAction(action) {
         <div>
           <p class="text-xs uppercase tracking-[0.16em] text-slate-400">{{ item.categoryLabel }}</p>
           <h3 class="mt-2 text-lg font-bold text-slate-900">{{ item.name }}</h3>
+          <p v-if="item.rentalPoint" class="mt-1 flex items-center gap-1 text-xs text-slate-500">
+            <MapPin class="h-3.5 w-3.5 shrink-0 text-cyan-600" />
+            <span class="truncate">{{ item.rentalPoint.name }}</span>
+          </p>
         </div>
         <span
           :class="[

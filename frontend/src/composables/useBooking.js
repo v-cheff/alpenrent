@@ -39,7 +39,10 @@ function nightsBetween(start, end) {
 }
 
 export function useBooking() {
-  const { isAuthenticated, openLogin } = useAuth()
+  const { isAuthenticated, isOwner, openLogin } = useAuth()
+
+  const OWNER_CANNOT_BOOK =
+    'You are signed in with a rental point owner account. Sign in as a renter to book equipment.'
 
   const durationDays = computed(() => nightsBetween(state.startDate, state.endDate))
   const location = computed(
@@ -94,7 +97,7 @@ export function useBooking() {
 
     const item = selectedItem.value
     state.selectedSize = item?.sizes?.[0] ?? ''
-    state.bookingError = ''
+    state.bookingError = isOwner.value ? OWNER_CANNOT_BOOK : ''
     state.sizePickerOpen = true
     return true
   }
@@ -128,6 +131,11 @@ export function useBooking() {
     if (!isAuthenticated.value) {
       state.sizePickerOpen = false
       openLogin('Please sign in or register to complete your booking.')
+      return false
+    }
+
+    if (isOwner.value) {
+      state.bookingError = OWNER_CANNOT_BOOK
       return false
     }
 

@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomePage from '../HomePage.vue'
-import AdminEquipmentPage from '../admin/AdminEquipmentPage.vue'
+import MyEquipmentPage from '../my-equipment/MyEquipmentPage.vue'
+import MyBookingsPage from '../my-bookings/MyBookingsPage.vue'
 
 const routes = [
   {
@@ -9,9 +10,16 @@ const routes = [
     component: HomePage,
   },
   {
-    path: '/admin',
-    name: 'admin',
-    component: AdminEquipmentPage,
+    // Owner: rental points, equipment and incoming bookings
+    path: '/my-equipment',
+    name: 'my-equipment',
+    component: MyEquipmentPage,
+  },
+  {
+    // Renter: bookings the user made
+    path: '/my-bookings',
+    name: 'my-bookings',
+    component: MyBookingsPage,
   },
   {
     path: '/:pathMatch(.*)*',

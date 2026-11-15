@@ -14,8 +14,9 @@ function uniqueTrimmed(values) {
   return [...new Set(values.map((value) => value.trim()).filter(Boolean))]
 }
 
-function blankForm() {
+function blankForm(rentalPointId = null) {
   return {
+    rentalPointId,
     name: '',
     category: 'ski',
     categoryLabel: '',
@@ -33,6 +34,7 @@ function blankForm() {
 
 function formFromItem(item) {
   return {
+    rentalPointId: item.rentalPointId ?? null,
     name: item.name ?? '',
     category: item.category ?? 'ski',
     categoryLabel: item.categoryLabel ?? '',
@@ -90,8 +92,9 @@ export function useEquipmentForm({ onCreated, onUpdated } = {}) {
     editor.formError = ''
   }
 
-  function openCreate() {
+  function openCreate(rentalPointId = null) {
     reset()
+    editor.form.rentalPointId = rentalPointId
     editor.isOpen = true
   }
 
@@ -142,6 +145,10 @@ export function useEquipmentForm({ onCreated, onUpdated } = {}) {
   }
 
   function validate() {
+    if (!editor.form.rentalPointId) {
+      return 'Choose the rental point where this equipment is available.'
+    }
+
     if (!editor.form.name.trim()) {
       return 'Enter an equipment name.'
     }
@@ -161,6 +168,7 @@ export function useEquipmentForm({ onCreated, onUpdated } = {}) {
   function buildFormData() {
     const formData = new FormData()
     const fields = {
+      rentalPointId: String(editor.form.rentalPointId),
       name: editor.form.name.trim(),
       category: editor.form.category,
       categoryLabel: editor.form.categoryLabel.trim(),

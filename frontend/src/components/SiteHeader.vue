@@ -1,11 +1,11 @@
 <script setup>
 import { ref } from 'vue'
-import { LogOut, Menu, Mountain, Phone, User as UserIcon, X } from 'lucide-vue-next'
+import { CalendarDays, LogOut, Menu, Mountain, Phone, Store, User as UserIcon, X } from 'lucide-vue-next'
 import { useBooking } from '../composables/useBooking'
 import { useAuth } from '../composables/useAuth'
 
 const { state } = useBooking()
-const { user, isAuthenticated, openLogin, logout } = useAuth()
+const { user, isAuthenticated, isOwner, accountPage, openLogin, logout } = useAuth()
 const menuOpen = ref(false)
 
 const links = [
@@ -56,16 +56,23 @@ function go(href) {
       </nav>
 
       <div class="flex items-center gap-2.5">
-        <a
+        <!-- <a
           href="tel:+43512123456"
           class="hidden items-center gap-2 rounded-full bg-white/10 px-3 py-2 text-sm font-semibold text-white ring-1 ring-white/20 backdrop-blur transition hover:bg-white/20 sm:inline-flex"
         >
           <Phone class="h-4 w-4" />
           <span>+43 512 123 456</span>
-        </a>
+        </a> -->
 
         <!-- AUTH BUTTONS (DESKTOP) -->
         <template v-if="isAuthenticated">
+          <a
+            :href="accountPage.href"
+            class="hidden items-center gap-1.5 rounded-full bg-white/10 px-3 py-2 text-sm font-semibold text-white ring-1 ring-white/20 backdrop-blur transition hover:bg-white/20 md:inline-flex"
+          >
+            <component :is="isOwner ? Store : CalendarDays" class="h-4 w-4" />
+            <span>{{ accountPage.label }}</span>
+          </a>
           <div class="hidden items-center gap-2 rounded-full bg-white/15 py-1.5 pl-3 pr-2 text-sm font-semibold text-white ring-1 ring-white/25 backdrop-blur md:flex">
             <span class="flex h-6 w-6 items-center justify-center rounded-full bg-alpine-600 text-xs font-extrabold text-white">
               {{ user?.name ? user.name.charAt(0).toUpperCase() : 'U' }}
@@ -134,6 +141,13 @@ function go(href) {
               <span>Log out</span>
             </button>
           </div>
+          <a
+            :href="accountPage.href"
+            class="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-100 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-200"
+          >
+            <component :is="isOwner ? Store : CalendarDays" class="h-4 w-4" />
+            <span>{{ accountPage.label }}</span>
+          </a>
         </template>
         <template v-else>
           <button

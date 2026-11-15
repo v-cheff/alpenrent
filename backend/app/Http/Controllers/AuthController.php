@@ -8,6 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class AuthController extends Controller
 {
@@ -20,12 +21,14 @@ class AuthController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:6'],
+            'role' => ['sometimes', 'string', Rule::in(User::ROLES)],
         ]);
 
         $user = User::query()->create([
             'name' => $validated['name'],
             'email' => strtolower(trim($validated['email'])),
             'password' => Hash::make($validated['password']),
+            'role' => $validated['role'] ?? User::ROLE_RENTER,
         ]);
 
         $plainToken = Str::random(60);

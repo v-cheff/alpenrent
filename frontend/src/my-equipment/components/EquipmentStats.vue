@@ -7,10 +7,10 @@ defineProps({
 <template>
   <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
     <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <p class="text-sm text-slate-500">Total equipment</p>
+      <p class="text-sm text-slate-500">My equipment</p>
       <div class="mt-3 flex items-end justify-between">
         <strong class="text-3xl font-bold text-slate-900">{{ stats.total }}</strong>
-        <span class="rounded-full bg-cyan-50 px-2 py-1 text-xs font-semibold text-cyan-700">Live</span>
+        <span class="rounded-full bg-cyan-50 px-2 py-1 text-xs font-semibold text-cyan-700">Listed</span>
       </div>
     </div>
 
@@ -31,10 +31,10 @@ defineProps({
     </div>
 
     <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <p class="text-sm text-slate-500">Categories</p>
+      <p class="text-sm text-slate-500">Open bookings</p>
       <div class="mt-3 flex items-end justify-between">
-        <strong class="text-3xl font-bold text-slate-900">{{ stats.categories }}</strong>
-        <span class="rounded-full bg-violet-50 px-2 py-1 text-xs font-semibold text-violet-700">Groups</span>
+        <strong class="text-3xl font-bold text-slate-900">{{ stats.openBookings }}</strong>
+        <span class="rounded-full bg-violet-50 px-2 py-1 text-xs font-semibold text-violet-700">Renters</span>
       </div>
     </div>
   </section>

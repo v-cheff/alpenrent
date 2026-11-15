@@ -22,14 +22,40 @@ class AuthTest extends TestCase
         $response->assertCreated()
             ->assertJsonPath('user.name', 'John Doe')
             ->assertJsonPath('user.email', 'john@example.com')
-            ->assertJsonStructure(['user' => ['id', 'name', 'email'], 'token']);
+            ->assertJsonPath('user.role', 'renter')
+            ->assertJsonStructure(['user' => ['id', 'name', 'email', 'role'], 'token']);
 
         $this->assertDatabaseHas('users', [
             'name' => 'John Doe',
             'email' => 'john@example.com',
+            'role' => 'renter',
         ]);
 
         $this->assertDatabaseCount('personal_access_tokens', 1);
+    }
+
+    public function test_user_can_register_as_a_rental_point_owner(): void
+    {
+        $this->postJson('/v1/auth/register', [
+            'name' => 'Shop Owner',
+            'email' => 'shop@example.com',
+            'password' => 'secret123',
+            'role' => 'owner',
+        ])->assertCreated()
+            ->assertJsonPath('user.role', 'owner');
+
+        $this->assertDatabaseHas('users', ['email' => 'shop@example.com', 'role' => 'owner']);
+    }
+
+    public function test_registration_rejects_unknown_roles(): void
+    {
+        $this->postJson('/v1/auth/register', [
+            'name' => 'Sneaky',
+            'email' => 'sneaky@example.com',
+            'password' => 'secret123',
+            'role' => 'admin',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors('role');
     }
 
     public function test_registration_requires_valid_data(): void

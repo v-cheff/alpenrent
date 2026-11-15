@@ -7,14 +7,35 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Exists;
 use RuntimeException;
 use Throwable;
 
 class EquipmentController extends Controller
 {
+    /**
+     * Public catalog: equipment from every rental point.
+     */
     public function index(): JsonResponse
     {
         $equipment = Equipment::query()
+            ->with('rentalPoint')
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(fn (Equipment $item) => $item->toApiArray());
+
+        return response()->json($equipment);
+    }
+
+    /**
+     * Equipment listed at the authenticated user's own rental points.
+     */
+    public function mine(Request $request): JsonResponse
+    {
+        $equipment = Equipment::query()
+            ->ownedBy($request->user())
+            ->with('rentalPoint')
             ->orderByDesc('created_at')
             ->get()
             ->map(fn (Equipment $item) => $item->toApiArray());
@@ -24,12 +45,13 @@ class EquipmentController extends Controller
 
     public function show(Equipment $equipment): JsonResponse
     {
-        return response()->json($equipment->toApiArray());
+        return response()->json($equipment->load('rentalPoint')->toApiArray());
     }
 
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
+            'rentalPointId' => ['required', 'integer', $this->ownRentalPointRule($request)],
             'id' => ['nullable', 'string', 'max:255', 'alpha_dash:ascii', 'unique:equipment,id'],
             'name' => ['required', 'string', 'max:255'],
             'category' => ['required', 'in:ski,board,boots,kids'],
@@ -65,6 +87,7 @@ class EquipmentController extends Controller
         try {
             $equipment = Equipment::query()->create([
                 'id' => $id,
+                'rental_point_id' => $validated['rentalPointId'],
                 'name' => $validated['name'],
                 'category' => $validated['category'],
                 'category_label' => $validated['categoryLabel'] ?? 'Custom equipment',
@@ -86,12 +109,15 @@ class EquipmentController extends Controller
             throw $exception;
         }
 
-        return response()->json($equipment->toApiArray(), 201);
+        return response()->json($equipment->load('rentalPoint')->toApiArray(), 201);
     }
 
     public function update(Request $request, Equipment $equipment): JsonResponse
     {
+        $this->assertOwned($request, $equipment);
+
         $validated = $request->validate([
+            'rentalPointId' => ['sometimes', 'required', 'integer', $this->ownRentalPointRule($request)],
             'name' => ['sometimes', 'required', 'string', 'max:255'],
             'category' => ['sometimes', 'required', 'in:ski,board,boots,kids'],
             'categoryLabel' => ['nullable', 'string', 'max:255'],
@@ -127,6 +153,9 @@ class EquipmentController extends Controller
         try {
             $updateData = [];
 
+            if (array_key_exists('rentalPointId', $validated)) {
+                $updateData['rental_point_id'] = $validated['rentalPointId'];
+            }
             if (array_key_exists('name', $validated)) {
                 $updateData['name'] = $validated['name'];
             }
@@ -177,17 +206,35 @@ class EquipmentController extends Controller
             throw $exception;
         }
 
-        return response()->json($equipment->fresh()->toApiArray());
+        return response()->json($equipment->fresh('rentalPoint')->toApiArray());
     }
 
-    public function destroy(Equipment $equipment): JsonResponse
+    public function destroy(Request $request, Equipment $equipment): JsonResponse
     {
+        $this->assertOwned($request, $equipment);
+
         $this->deleteStoredImageIfLocal($equipment->image);
         $equipment->delete();
 
         return response()->json([
             'message' => 'Equipment deleted successfully.',
         ]);
+    }
+
+    /**
+     * Only the owner of the equipment's rental point may change it; others get a 404
+     * so equipment management doesn't reveal what other owners have.
+     */
+    private function assertOwned(Request $request, Equipment $equipment): void
+    {
+        if (! $equipment->isOwnedBy($request->user())) {
+            abort(404);
+        }
+    }
+
+    private function ownRentalPointRule(Request $request): Exists
+    {
+        return Rule::exists('rental_points', 'id')->where('user_id', $request->user()->id);
     }
 
     private function deleteStoredImageIfLocal(?string $imageUrl): void

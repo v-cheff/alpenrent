@@ -4,6 +4,10 @@ export function getEquipment() {
   return apiFetch('/equipment');
 }
 
+export function getMyEquipment() {
+  return apiFetch('/my/equipment');
+}
+
 export function getEquipmentItem(id) {
   return apiFetch(`/equipment/${id}`);
 }

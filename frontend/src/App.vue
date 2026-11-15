@@ -1,11 +1,18 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import HomePage from './HomePage.vue'
-import AdminEquipmentPage from './admin/AdminEquipmentPage.vue'
+import MyEquipmentPage from './my-equipment/MyEquipmentPage.vue'
+import MyBookingsPage from './my-bookings/MyBookingsPage.vue'
+
+// Renters manage bookings on /my-bookings, owners manage rental points on /my-equipment.
+const pages = {
+  '/my-equipment': MyEquipmentPage,
+  '/my-bookings': MyBookingsPage,
+}
 
 const currentPath = ref(window.location.pathname || '/')
 
-const currentView = computed(() => (currentPath.value === '/admin' ? 'admin' : 'home'))
+const currentPage = computed(() => pages[currentPath.value.replace(/\/+$/, '')] ?? HomePage)
 
 function syncPath() {
   currentPath.value = window.location.pathname || '/'
@@ -21,6 +28,5 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <HomePage v-if="currentView === 'home'" />
-  <AdminEquipmentPage v-else />
+  <component :is="currentPage" />
 </template>

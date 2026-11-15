@@ -68,6 +68,9 @@ class Booking extends Model
             'equipment' => $this->relationLoaded('equipment') && $this->equipment
                 ? $this->equipment->toApiArray()
                 : null,
+            'renter' => $this->relationLoaded('user') && $this->user
+                ? ['id' => $this->user->id, 'name' => $this->user->name, 'email' => $this->user->email]
+                : null,
             'createdAt' => $this->created_at?->toISOString(),
         ];
     }

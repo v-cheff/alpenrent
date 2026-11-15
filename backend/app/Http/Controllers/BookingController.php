@@ -15,8 +15,23 @@ class BookingController extends Controller
     {
         $bookings = $request->user()
             ->bookings()
-            ->with('equipment')
+            ->with('equipment.rentalPoint')
             ->orderByDesc('created_at')
+            ->get()
+            ->map(fn (Booking $booking) => $booking->toApiArray());
+
+        return response()->json($bookings);
+    }
+
+    /**
+     * Bookings other people made for equipment at the authenticated user's rental points.
+     */
+    public function incoming(Request $request): JsonResponse
+    {
+        $bookings = Booking::query()
+            ->whereHas('equipment', fn ($equipment) => $equipment->ownedBy($request->user()))
+            ->with(['equipment.rentalPoint', 'user'])
+            ->orderBy('start_date')
             ->get()
             ->map(fn (Booking $booking) => $booking->toApiArray());
 

@@ -26,7 +26,13 @@ const registerForm = reactive({
   email: '',
   password: '',
   passwordConfirmation: '',
+  role: 'renter',
 })
+
+const roleOptions = [
+  { id: 'renter', label: 'Rent equipment', hint: 'Book skis & boards' },
+  { id: 'owner', label: 'Rent it out', hint: 'Run rental points' },
+]
 
 // Clear errors and reset passwords when tab switches
 watch(authModalTab, () => {
@@ -94,6 +100,7 @@ async function handleRegister() {
       name: registerForm.name.trim(),
       email: registerForm.email.trim(),
       password: registerForm.password,
+      role: registerForm.role,
     })
     registerForm.password = ''
     registerForm.passwordConfirmation = ''
@@ -279,6 +286,26 @@ async function handleRegister() {
 
           <!-- REGISTER FORM -->
           <form v-else class="space-y-4" @submit.prevent="handleRegister">
+            <fieldset>
+              <legend class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-600">
+                I want to
+              </legend>
+              <div class="grid grid-cols-2 gap-2">
+                <label
+                  v-for="option in roleOptions"
+                  :key="option.id"
+                  class="cursor-pointer rounded-2xl border p-3 transition"
+                  :class="registerForm.role === option.id
+                    ? 'border-alpine-600 bg-alpine-50 ring-4 ring-alpine-100'
+                    : 'border-slate-200 bg-slate-50 hover:border-slate-300'"
+                >
+                  <input v-model="registerForm.role" type="radio" name="role" :value="option.id" class="sr-only" />
+                  <span class="block text-sm font-bold text-slateink">{{ option.label }}</span>
+                  <span class="mt-0.5 block text-xs text-slate-500">{{ option.hint }}</span>
+                </label>
+              </div>
+            </fieldset>
+
             <div>
               <label class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-600">
                 Full name

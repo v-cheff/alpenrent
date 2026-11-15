@@ -3,7 +3,13 @@ import { AlertTriangle, Trash2 } from 'lucide-vue-next'
 
 defineProps({
   isOpen: { type: Boolean, default: false },
-  item: { type: Object, default: null },
+  title: { type: String, default: 'Delete equipment' },
+  itemName: { type: String, default: '' },
+  description: {
+    type: String,
+    default: 'This action will permanently remove the equipment from the database and delete any stored image.',
+  },
+  confirmLabel: { type: String, default: 'Delete equipment' },
   isDeleting: { type: Boolean, default: false },
   error: { type: String, default: '' },
 })
@@ -13,7 +19,7 @@ const emit = defineEmits(['close', 'confirm'])
 
 <template>
   <div
-    v-if="isOpen && item"
+    v-if="isOpen"
     class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm"
     @click.self="!isDeleting && emit('close')"
   >
@@ -24,13 +30,11 @@ const emit = defineEmits(['close', 'confirm'])
         </div>
 
         <div class="flex-1">
-          <h3 class="text-lg font-bold text-slate-900">Delete equipment</h3>
+          <h3 class="text-lg font-bold text-slate-900">{{ title }}</h3>
           <p class="mt-1 text-sm text-slate-500">
-            Are you sure you want to delete <span class="font-semibold text-slate-800">"{{ item.name }}"</span>?
+            Are you sure you want to delete <span class="font-semibold text-slate-800">"{{ itemName }}"</span>?
           </p>
-          <p class="mt-2 text-xs text-slate-400">
-            This action will permanently remove the equipment from the database and delete any stored image.
-          </p>
+          <p class="mt-2 text-xs text-slate-400">{{ description }}</p>
         </div>
       </div>
 
@@ -69,7 +73,7 @@ const emit = defineEmits(['close', 'confirm'])
               d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
             ></path>
           </svg>
-          {{ isDeleting ? 'Deleting…' : 'Delete equipment' }}
+          {{ isDeleting ? 'Deleting…' : confirmLabel }}
         </button>
       </div>
     </div>

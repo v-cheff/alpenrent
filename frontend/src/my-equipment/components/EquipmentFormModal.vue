@@ -11,6 +11,7 @@ defineProps({
   editor: { type: Object, required: true },
   title: { type: String, required: true },
   submitLabel: { type: String, required: true },
+  rentalPoints: { type: Array, required: true },
 })
 
 const emit = defineEmits(['close', 'submit', 'upload', 'url-input'])
@@ -41,6 +42,16 @@ const fieldClass =
       </div>
 
       <form class="mt-6 grid gap-5 lg:grid-cols-2" @submit.prevent="emit('submit')">
+        <label class="block">
+          <span class="mb-2 block text-sm font-medium text-slate-700">Rental point</span>
+          <select v-model="editor.form.rentalPointId" :class="fieldClass" required>
+            <option :value="null" disabled>Choose a rental point</option>
+            <option v-for="point in rentalPoints" :key="point.id" :value="point.id">
+              {{ point.name }}
+            </option>
+          </select>
+        </label>
+
         <label class="block">
           <span class="mb-2 block text-sm font-medium text-slate-700">Category</span>
           <select v-model="editor.form.category" :class="fieldClass">
