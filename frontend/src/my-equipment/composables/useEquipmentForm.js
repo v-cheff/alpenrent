@@ -25,6 +25,7 @@ function blankForm(rentalPointId = null) {
     image: '',
     specs: [''],
     dailyRate: 0,
+    halfDayRate: '',
     deposit: 0,
     sizes: [''],
     availableNow: true,
@@ -43,6 +44,7 @@ function formFromItem(item) {
     image: item.image ?? '',
     specs: paddedList(item.specs),
     dailyRate: item.dailyRate ?? 0,
+    halfDayRate: item.halfDayRate ?? '',
     deposit: item.deposit ?? 0,
     sizes: paddedList(item.sizes),
     availableNow: Boolean(item.availableNow),
@@ -175,6 +177,8 @@ export function useEquipmentForm({ onCreated, onUpdated } = {}) {
       badge: editor.form.badge.trim(),
       badgeTone: editor.form.badgeTone,
       dailyRate: String(editor.form.dailyRate),
+      // Empty = no half-day rental for this item
+      halfDayRate: editor.form.halfDayRate === '' || editor.form.halfDayRate === null ? '' : String(editor.form.halfDayRate),
       deposit: String(editor.form.deposit),
       availableNow: editor.form.availableNow ? '1' : '0',
     }

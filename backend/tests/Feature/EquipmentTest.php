@@ -81,7 +81,24 @@ class EquipmentTest extends TestCase
             ->assertJsonPath('image', 'https://example.com/snowboard.jpg')
             ->assertJsonPath('specs', [])
             ->assertJsonPath('sizes', [])
+            ->assertJsonPath('halfDayRate', null)
             ->assertJsonPath('availableDates', []);
+    }
+
+    public function test_owner_can_set_and_clear_a_half_day_rate(): void
+    {
+        [, $token, $point] = $this->owner();
+        $this->createEquipment($point, ['id' => 'half-day-ski']);
+
+        $this->withToken($token)
+            ->putJson('/v1/equipment/half-day-ski', ['halfDayRate' => 22.5])
+            ->assertOk()
+            ->assertJsonPath('halfDayRate', 22.5);
+
+        $this->withToken($token)
+            ->putJson('/v1/equipment/half-day-ski', ['halfDayRate' => null])
+            ->assertOk()
+            ->assertJsonPath('halfDayRate', null);
     }
 
     public function test_guest_cannot_create_equipment(): void

@@ -3,7 +3,7 @@ import { computed, reactive, ref } from 'vue'
 import { CalendarDays, Clock3, MapPin } from 'lucide-vue-next'
 import AccountLayout from '../components/AccountLayout.vue'
 import { cancelBooking, getMyBookings } from '../api/bookings.js'
-import { bookingDays, bookingStatus, formatBookingDate } from '../utils/bookings.js'
+import { bookingDatesLabel, bookingDurationLabel, bookingStatus } from '../utils/bookings.js'
 
 const state = reactive({
   items: [],
@@ -176,11 +176,12 @@ async function cancel(booking) {
               </div>
 
               <p class="mt-2 text-sm font-semibold text-slate-800">
-                {{ formatBookingDate(booking.startDate) }} → {{ formatBookingDate(booking.endDate) }}
+                {{ bookingDatesLabel(booking) }}
               </p>
-              <p v-if="booking.equipment" class="text-xs text-slate-500">
-                {{ bookingDays(booking) }} days · €{{ booking.equipment.dailyRate * bookingDays(booking) }}
-                · deposit €{{ booking.equipment.deposit }}
+              <p class="text-xs text-slate-500">
+                {{ bookingDurationLabel(booking) }}
+                <template v-if="booking.total !== null && booking.total !== undefined"> · €{{ booking.total }}</template>
+                <template v-if="booking.equipment"> · deposit €{{ booking.equipment.deposit }}</template>
               </p>
 
               <div v-if="booking.equipment?.rentalPoint" class="mt-2 space-y-0.5 text-xs text-slate-500">

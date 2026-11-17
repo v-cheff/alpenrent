@@ -8,6 +8,8 @@ const {
   state,
   selectedItem,
   durationDays,
+  halfDayAvailable,
+  effectiveRentalType,
   equipmentTotal,
   insuranceTotal,
   grandTotal,
@@ -81,17 +83,56 @@ async function confirm() {
           Open rider height vs. ski length guide
         </button>
 
+        <fieldset v-if="halfDayAvailable" class="mt-5">
+          <legend class="text-sm font-bold text-slateink">Rental time</legend>
+          <div class="mt-2 grid grid-cols-2 gap-2">
+            <label
+              v-for="option in [
+                { id: 'full_day', label: 'Full day', price: selectedItem.dailyRate, hint: 'Opening to closing' },
+                { id: 'half_day', label: 'Half day', price: selectedItem.halfDayRate, hint: 'From 12:00' },
+              ]"
+              :key="option.id"
+              class="cursor-pointer rounded-2xl border p-3 transition"
+              :class="effectiveRentalType === option.id
+                ? 'border-alpine-600 bg-alpine-50 ring-4 ring-alpine-100'
+                : 'border-slate-200 bg-slate-50 hover:border-slate-300'"
+            >
+              <input
+                v-model="state.rentalType"
+                type="radio"
+                name="rentalType"
+                :value="option.id"
+                class="sr-only"
+                :disabled="state.bookingSubmitting"
+              />
+              <span class="flex items-baseline justify-between gap-2">
+                <span class="text-sm font-bold text-slateink">{{ option.label }}</span>
+                <span class="text-sm font-bold text-alpine-700">€{{ option.price }}</span>
+              </span>
+              <span class="mt-0.5 block text-xs text-slate-500">{{ option.hint }}</span>
+            </label>
+          </div>
+        </fieldset>
+
         <label class="mt-5 flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
           <input v-model="state.insurance" type="checkbox" class="mt-1 h-4 w-4 accent-alpine-600" />
           <span>
             <span class="block text-sm font-bold text-slateink">Add damages & theft insurance</span>
-            <span class="text-xs text-slate-500">+€3 / day · {{ durationDays }} days = €{{ durationDays * 3 }}</span>
+            <span class="text-xs text-slate-500">
+              +€3 / day · {{ durationDays }} {{ durationDays === 1 ? 'day' : 'days' }} = €{{ durationDays * 3 }}
+            </span>
           </span>
         </label>
 
         <dl class="mt-5 space-y-2 text-sm">
           <div class="flex justify-between text-slate-600">
-            <dt>Rental ({{ durationDays }} days, MwSt. 20% incl.)</dt>
+            <dt>
+              Rental ({{
+                effectiveRentalType === 'half_day'
+                  ? 'half day'
+                  : `${durationDays} ${durationDays === 1 ? 'day' : 'days'}`
+              }}, MwSt. 20% incl.)
+            </dt>
             <dd class="font-semibold">€{{ equipmentTotal }}</dd>
           </div>
           <div class="flex justify-between text-slate-600">

@@ -1,11 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { CalendarDays, MapPin, Mail } from 'lucide-vue-next'
-import {
-  bookingDays as days,
-  bookingStatus,
-  formatBookingDate as formatDate,
-} from '../../utils/bookings.js'
+import { bookingDatesLabel, bookingDurationLabel, bookingStatus } from '../../utils/bookings.js'
 
 const props = defineProps({
   bookings: { type: Array, required: true },
@@ -90,10 +86,10 @@ const rows = computed(() =>
         </div>
 
         <div class="text-sm">
-          <p class="font-semibold text-slate-800">{{ formatDate(booking.startDate) }} → {{ formatDate(booking.endDate) }}</p>
+          <p class="font-semibold text-slate-800">{{ bookingDatesLabel(booking) }}</p>
           <p class="text-xs text-slate-500">
-            {{ days(booking) }} days
-            <template v-if="booking.equipment"> · €{{ booking.equipment.dailyRate * days(booking) }}</template>
+            {{ bookingDurationLabel(booking) }}
+            <template v-if="booking.total !== null && booking.total !== undefined"> · €{{ booking.total }}</template>
           </p>
         </div>
 

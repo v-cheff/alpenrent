@@ -89,7 +89,7 @@ class BookingTest extends TestCase
             ->assertExactJson([]);
     }
 
-    public function test_booking_requires_end_date_after_start_date(): void
+    public function test_booking_rejects_end_date_before_start_date(): void
     {
         [, $token] = $this->authenticatedUser();
         $this->createEquipment();
@@ -103,6 +103,105 @@ class BookingTest extends TestCase
             ])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('endDate');
+    }
+
+    public function test_booking_days_are_counted_inclusively(): void
+    {
+        [, $token] = $this->authenticatedUser();
+        $this->createEquipment(['daily_rate' => 35]);
+
+        $this->withToken($token)->postJson('/v1/bookings', [
+            'equipmentId' => 'test-ski',
+            'size' => '160',
+            'startDate' => '2026-12-01',
+            'endDate' => '2026-12-04',
+        ])->assertCreated()
+            ->assertJsonPath('rentalType', 'full_day')
+            ->assertJsonPath('days', 4)
+            ->assertJsonPath('total', 140);
+    }
+
+    public function test_user_can_book_a_single_day(): void
+    {
+        [, $token] = $this->authenticatedUser();
+        $this->createEquipment(['daily_rate' => 35]);
+
+        $this->withToken($token)->postJson('/v1/bookings', [
+            'equipmentId' => 'test-ski',
+            'size' => '160',
+            'startDate' => '2026-12-10',
+            'endDate' => '2026-12-10',
+        ])->assertCreated()
+            ->assertJsonPath('days', 1)
+            ->assertJsonPath('total', 35);
+    }
+
+    public function test_single_day_booking_conflicts_with_the_last_day_of_another_booking(): void
+    {
+        [, $token] = $this->authenticatedUser();
+        [$otherUser] = $this->authenticatedUser('bob@example.com');
+        $this->createEquipment();
+
+        Booking::query()->create([
+            'user_id' => $otherUser->id,
+            'equipment_id' => 'test-ski',
+            'size' => '160',
+            'start_date' => '2026-12-01',
+            'end_date' => '2026-12-04',
+        ]);
+
+        $this->withToken($token)->postJson('/v1/bookings', [
+            'equipmentId' => 'test-ski',
+            'size' => '160',
+            'startDate' => '2026-12-04',
+            'endDate' => '2026-12-04',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors('startDate');
+    }
+
+    public function test_user_can_book_a_half_day_when_the_equipment_offers_it(): void
+    {
+        [, $token] = $this->authenticatedUser();
+        $this->createEquipment(['daily_rate' => 35, 'half_day_rate' => 22]);
+
+        $this->withToken($token)->postJson('/v1/bookings', [
+            'equipmentId' => 'test-ski',
+            'size' => '160',
+            'rentalType' => 'half_day',
+            'startDate' => '2026-12-10',
+            'endDate' => '2026-12-10',
+        ])->assertCreated()
+            ->assertJsonPath('rentalType', 'half_day')
+            ->assertJsonPath('days', 1)
+            ->assertJsonPath('total', 22)
+            ->assertJsonPath('equipment.halfDayRate', 22);
+    }
+
+    public function test_half_day_booking_must_be_a_single_date_and_offered(): void
+    {
+        [, $token] = $this->authenticatedUser();
+        $this->createEquipment(['id' => 'with-half-day', 'half_day_rate' => 22]);
+        $this->createEquipment(['id' => 'full-days-only']);
+
+        $this->withToken($token)->postJson('/v1/bookings', [
+            'equipmentId' => 'with-half-day',
+            'size' => '160',
+            'rentalType' => 'half_day',
+            'startDate' => '2026-12-10',
+            'endDate' => '2026-12-11',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors('rentalType');
+
+        $this->withToken($token)->postJson('/v1/bookings', [
+            'equipmentId' => 'full-days-only',
+            'size' => '160',
+            'rentalType' => 'half_day',
+            'startDate' => '2026-12-10',
+            'endDate' => '2026-12-10',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors('rentalType');
+
+        $this->assertDatabaseCount('bookings', 0);
     }
 
     public function test_booking_rejects_unavailable_size(): void

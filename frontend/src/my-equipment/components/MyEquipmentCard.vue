@@ -65,6 +65,7 @@ function runAction(action) {
         <div>
           <p class="text-xs uppercase tracking-[0.14em] text-slate-400">Daily rate</p>
           <p class="mt-1 text-xl font-bold text-cyan-700">€{{ item.dailyRate }}</p>
+          <p v-if="item.halfDayRate != null" class="text-xs text-slate-500">Half day €{{ item.halfDayRate }}</p>
         </div>
         <div class="text-right">
           <p class="text-xs uppercase tracking-[0.14em] text-slate-400">Deposit</p>

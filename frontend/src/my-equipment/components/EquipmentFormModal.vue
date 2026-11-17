@@ -106,7 +106,20 @@ const fieldClass =
 
         <label class="block">
           <span class="mb-2 block text-sm font-medium text-slate-700">Daily rate</span>
-          <input v-model.number="editor.form.dailyRate" type="number" min="0" :class="fieldClass" />
+          <input v-model.number="editor.form.dailyRate" type="number" min="0" step="0.01" :class="fieldClass" />
+        </label>
+
+        <label class="block">
+          <span class="mb-2 block text-sm font-medium text-slate-700">Half-day rate</span>
+          <input
+            v-model.number="editor.form.halfDayRate"
+            type="number"
+            min="0"
+            step="0.01"
+            placeholder="Leave empty if not offered"
+            :class="fieldClass"
+          />
+          <span class="mt-1 block text-xs text-slate-500">Single date, from 12:00. Leave empty to rent by full days only.</span>
         </label>
 
         <label class="block">

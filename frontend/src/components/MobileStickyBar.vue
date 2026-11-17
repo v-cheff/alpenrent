@@ -16,7 +16,7 @@ const visible = computed(() => !!selectedItem.value)
       <div class="min-w-0">
         <p class="truncate text-sm font-extrabold text-slateink">{{ selectedItem.name }} · {{ state.selectedSize }}</p>
         <p class="truncate text-xs text-slate-500">
-          {{ durationDays }} days · {{ location.label }} · €{{ grandTotal }} (VAT incl.)
+          {{ durationDays }} {{ durationDays === 1 ? 'day' : 'days' }} · {{ location.label }} · €{{ grandTotal }} (VAT incl.)
         </p>
       </div>
       <button

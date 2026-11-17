@@ -48,6 +48,9 @@ const badgeClass = {
             €{{ item.dailyRate }}
             <span class="text-sm font-semibold text-slate-500">/ day</span>
           </p>
+          <p v-if="item.halfDayRate != null" class="text-xs font-medium text-slate-500">
+            Half day €{{ item.halfDayRate }}
+          </p>
           <p class="text-xs font-medium text-slate-500">+ €{{ item.deposit }} deposit</p>
         </div>
         <p class="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500">

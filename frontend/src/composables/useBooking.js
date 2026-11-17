@@ -16,7 +16,9 @@ const addDays = (iso, days) => {
 
 const state = reactive({
   startDate: toISODate(today),
-  endDate: addDays(toISODate(today), 3),
+  endDate: addDays(toISODate(today), 2),
+  // 'full_day' | 'half_day' (half day = a single date, from noon)
+  rentalType: 'full_day',
   locationId: 'innsbruck',
   skill: 'intermediate',
   insurance: false,
@@ -31,11 +33,12 @@ const state = reactive({
   bookingError: '',
 })
 
-function nightsBetween(start, end) {
+// Ski rentals bill each calendar day, both ends inclusive: 1–4 Dec = 4 days, 1–1 Dec = 1 day.
+function rentalDaysBetween(start, end) {
   const a = new Date(`${start}T12:00:00`)
   const b = new Date(`${end}T12:00:00`)
   const diff = Math.round((b - a) / 86400000)
-  return Math.max(diff, 1)
+  return Math.max(diff + 1, 1)
 }
 
 export function useBooking() {
@@ -44,7 +47,7 @@ export function useBooking() {
   const OWNER_CANNOT_BOOK =
     'You are signed in with a rental point owner account. Sign in as a renter to book equipment.'
 
-  const durationDays = computed(() => nightsBetween(state.startDate, state.endDate))
+  const durationDays = computed(() => rentalDaysBetween(state.startDate, state.endDate))
   const location = computed(
     () => locations.find((l) => l.id === state.locationId) ?? locations[0],
   )
@@ -55,8 +58,21 @@ export function useBooking() {
     return equipment.find((item) => item.id === state.selected) ?? null
   })
 
+  // Half day is offered only for a single date and only if the owner set a half-day rate.
+  const halfDayAvailable = computed(
+    () =>
+      durationDays.value === 1 &&
+      selectedItem.value?.halfDayRate !== null &&
+      selectedItem.value?.halfDayRate !== undefined,
+  )
+
+  const effectiveRentalType = computed(() =>
+    halfDayAvailable.value && state.rentalType === 'half_day' ? 'half_day' : 'full_day',
+  )
+
   const equipmentTotal = computed(() => {
     if (!selectedItem.value) return 0
+    if (effectiveRentalType.value === 'half_day') return selectedItem.value.halfDayRate
     return selectedItem.value.dailyRate * durationDays.value
   })
 
@@ -69,8 +85,8 @@ export function useBooking() {
 
   function setDates(start, end) {
     state.startDate = start
-    if (!end || end <= start) {
-      state.endDate = addDays(start, 1)
+    if (!end || end < start) {
+      state.endDate = start
     } else {
       state.endDate = end
     }
@@ -97,6 +113,7 @@ export function useBooking() {
 
     const item = selectedItem.value
     state.selectedSize = item?.sizes?.[0] ?? ''
+    state.rentalType = 'full_day'
     state.bookingError = isOwner.value ? OWNER_CANNOT_BOOK : ''
     state.sizePickerOpen = true
     return true
@@ -151,6 +168,7 @@ export function useBooking() {
       await createBooking({
         equipmentId: selectedItem.value.id,
         size: state.selectedSize,
+        rentalType: effectiveRentalType.value,
         startDate: state.startDate,
         endDate: state.endDate,
       })
@@ -177,6 +195,8 @@ export function useBooking() {
     durationDays,
     location,
     selectedItem,
+    halfDayAvailable,
+    effectiveRentalType,
     equipmentTotal,
     insuranceTotal,
     grandTotal,

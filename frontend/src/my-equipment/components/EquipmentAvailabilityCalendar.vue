@@ -1,12 +1,6 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
-import {
-  CalendarDays,
-  ChevronLeft,
-  ChevronRight,
-  Clock3,
-  X,
-} from 'lucide-vue-next'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { CalendarDays, ChevronLeft, ChevronRight, X } from 'lucide-vue-next'
 
 const props = defineProps({
   item: { type: Object, required: true },
@@ -14,17 +8,14 @@ const props = defineProps({
 
 const emit = defineEmits(['close'])
 
+// Rentals are booked by whole days (or a half day on a single date), so the calendar works in days.
 const views = [
   { id: 'month', label: 'Month' },
   { id: 'week', label: 'Week' },
-  { id: 'day', label: 'Day' },
 ]
 const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-const hours = Array.from({ length: 12 }, (_, index) => index + 8)
 const view = ref('month')
 const anchorDate = ref(startOfDay(new Date()))
-const selectedDate = ref(startOfDay(new Date()))
-const slotOverrides = reactive({})
 const dialog = ref(null)
 let previousFocus = null
 
@@ -58,13 +49,12 @@ function formatDate(date, options) {
   return new Intl.DateTimeFormat('en-GB', options).format(date)
 }
 
-const monthLabel = computed(() => formatDate(anchorDate.value, { month: 'long', year: 'numeric' }))
-const selectedDateLabel = computed(() =>
-  formatDate(selectedDate.value, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
-)
+const todayKey = dateKey(new Date())
+
 const periodLabel = computed(() => {
-  if (view.value === 'month') return monthLabel.value
-  if (view.value === 'day') return selectedDateLabel.value
+  if (view.value === 'month') {
+    return formatDate(anchorDate.value, { month: 'long', year: 'numeric' })
+  }
 
   const firstDay = startOfWeek(anchorDate.value)
   const lastDay = addDays(firstDay, 6)
@@ -77,8 +67,20 @@ const periodLabel = computed(() => {
 function dateStatus(date) {
   const key = dateKey(date)
   if ((props.item.availableDates ?? []).includes(key)) return 'available'
-  if (key === dateKey(new Date())) return props.item.availableNow ? 'available' : 'unavailable'
+  if (key === todayKey) return props.item.availableNow ? 'available' : 'unavailable'
   return 'unknown'
+}
+
+const statusLabel = {
+  available: 'Available',
+  unavailable: 'Unavailable',
+  unknown: 'No data',
+}
+
+const statusDot = {
+  available: 'bg-emerald-500',
+  unavailable: 'bg-rose-500',
+  unknown: 'bg-slate-300',
 }
 
 const monthDays = computed(() => {
@@ -103,54 +105,19 @@ const weekDays = computed(() => {
   })
 })
 
-function slotKey(hour) {
-  return `${props.item.id}:${dateKey(selectedDate.value)}:${hour}`
-}
-
-function defaultSlotStatus(hour) {
-  if (dateStatus(selectedDate.value) === 'unavailable') return 'unavailable'
-
-  const seed = [...`${props.item.id}:${dateKey(selectedDate.value)}:${hour}`]
-    .reduce((total, character) => total + character.charCodeAt(0), 0)
-  return seed % 5 === 0 ? 'reserved' : 'available'
-}
-
-function slotStatus(hour) {
-  return slotOverrides[slotKey(hour)] ?? defaultSlotStatus(hour)
-}
-
-function toggleSlot(hour) {
-  const currentStatus = slotStatus(hour)
-  slotOverrides[slotKey(hour)] = currentStatus === 'available' ? 'reserved' : 'available'
-}
-
-function selectDay(date) {
-  selectedDate.value = startOfDay(date)
-  anchorDate.value = startOfDay(date)
-  view.value = 'day'
-}
-
-function selectView(nextView) {
-  view.value = nextView
-  if (nextView === 'day') selectedDate.value = startOfDay(anchorDate.value)
-}
-
 function movePeriod(direction) {
   const next = new Date(anchorDate.value)
   if (view.value === 'month') {
     next.setDate(1)
     next.setMonth(next.getMonth() + direction)
   } else {
-    next.setDate(next.getDate() + (view.value === 'week' ? 7 : 1) * direction)
+    next.setDate(next.getDate() + 7 * direction)
   }
   anchorDate.value = next
-  if (view.value === 'day') selectedDate.value = startOfDay(next)
 }
 
 function goToToday() {
-  const today = startOfDay(new Date())
-  anchorDate.value = today
-  selectedDate.value = today
+  anchorDate.value = startOfDay(new Date())
 }
 
 function handleKeydown(event) {
@@ -261,7 +228,7 @@ onBeforeUnmount(() => {
               :aria-selected="view === option.id"
               class="rounded-lg px-3 py-1.5 text-xs font-semibold transition sm:px-4"
               :class="view === option.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'"
-              @click="selectView(option.id)"
+              @click="view = option.id"
             >
               {{ option.label }}
             </button>
@@ -284,14 +251,6 @@ onBeforeUnmount(() => {
             </span>
           </div>
 
-          <div
-            v-if="view !== 'day'"
-            class="mb-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900"
-          >
-            <Clock3 class="mt-0.5 h-4 w-4 shrink-0" />
-            <p>Date availability uses the equipment data. Open a date for the hourly demo schedule; hourly changes are local only and are not saved.</p>
-          </div>
-
           <div v-if="view === 'month'" class="min-w-[700px]">
             <div class="grid grid-cols-7 border-b border-slate-200 pb-2">
               <p v-for="day in weekdays" :key="day" class="px-2 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -299,46 +258,35 @@ onBeforeUnmount(() => {
               </p>
             </div>
             <div class="grid grid-cols-7">
-              <button
+              <div
                 v-for="day in monthDays"
                 :key="day.key"
-                type="button"
-                class="group min-h-24 border-b border-r border-slate-100 p-2 text-left transition hover:bg-cyan-50/60 sm:min-h-28 sm:p-3"
-                :class="!day.inMonth && 'bg-slate-50/70 text-slate-300'"
-                :aria-label="`${formatDate(day.date, { day: 'numeric', month: 'long', year: 'numeric' })}: ${day.status}. Open hourly schedule`"
-                @click="selectDay(day.date)"
+                class="min-h-24 border-b border-r border-slate-100 p-2 sm:min-h-28 sm:p-3"
+                :class="!day.inMonth && 'bg-slate-50/70'"
+                :aria-label="`${formatDate(day.date, { day: 'numeric', month: 'long', year: 'numeric' })}: ${statusLabel[day.status]}`"
               >
                 <span
                   class="inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold"
-                  :class="day.key === dateKey(new Date()) ? 'bg-cyan-600 text-white' : day.inMonth ? 'text-slate-800 group-hover:text-cyan-800' : 'text-slate-400'"
+                  :class="day.key === todayKey ? 'bg-cyan-600 text-white' : day.inMonth ? 'text-slate-800' : 'text-slate-400'"
                 >
                   {{ day.date.getDate() }}
                 </span>
                 <span class="mt-2 flex items-center gap-1.5 text-[10px] font-medium sm:text-xs">
-                  <span
-                    class="h-2 w-2 shrink-0 rounded-full"
-                    :class="{
-                      'bg-emerald-500': day.status === 'available',
-                      'bg-rose-500': day.status === 'unavailable',
-                      'bg-slate-300': day.status === 'unknown',
-                    }"
-                  />
+                  <span class="h-2 w-2 shrink-0 rounded-full" :class="statusDot[day.status]" />
                   <span :class="day.status === 'unknown' ? 'text-slate-400' : 'text-slate-600'">
-                    {{ day.status === 'available' ? 'Available' : day.status === 'unavailable' ? 'Unavailable' : 'No data' }}
+                    {{ statusLabel[day.status] }}
                   </span>
                 </span>
-              </button>
+              </div>
             </div>
           </div>
 
-          <div v-else-if="view === 'week'" class="grid min-w-[800px] grid-cols-7 gap-3">
-            <button
+          <div v-else class="grid min-w-[800px] grid-cols-7 gap-3">
+            <div
               v-for="day in weekDays"
               :key="day.key"
-              type="button"
-              class="min-h-52 rounded-2xl border p-3 text-left transition hover:-translate-y-0.5 hover:border-cyan-300 hover:shadow-md"
-              :class="day.key === dateKey(selectedDate) ? 'border-cyan-400 bg-cyan-50/50' : 'border-slate-200 bg-white'"
-              @click="selectDay(day.date)"
+              class="min-h-40 rounded-2xl border p-3"
+              :class="day.key === todayKey ? 'border-cyan-400 bg-cyan-50/50' : 'border-slate-200 bg-white'"
             >
               <span class="block text-xs font-semibold uppercase tracking-wide text-slate-500">
                 {{ formatDate(day.date, { weekday: 'short' }) }}
@@ -347,90 +295,18 @@ onBeforeUnmount(() => {
                 {{ formatDate(day.date, { day: 'numeric' }) }}
               </span>
               <span class="mt-4 inline-flex items-center gap-1.5 text-xs font-medium text-slate-600">
-                <span
-                  class="h-2.5 w-2.5 rounded-full"
-                  :class="{
-                    'bg-emerald-500': day.status === 'available',
-                    'bg-rose-500': day.status === 'unavailable',
-                    'bg-slate-300': day.status === 'unknown',
-                  }"
-                />
-                {{ day.status === 'available' ? 'Available' : day.status === 'unavailable' ? 'Unavailable' : 'No date data' }}
-              </span>
-              <span class="mt-5 block text-xs font-semibold text-cyan-700">Open day →</span>
-            </button>
-          </div>
-
-          <div v-else class="mx-auto max-w-5xl">
-            <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h3 class="text-lg font-bold text-slate-900">{{ selectedDateLabel }}</h3>
-                <p class="mt-1 text-sm text-slate-500">Hourly availability · 08:00–20:00</p>
-              </div>
-              <span
-                class="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold"
-                :class="{
-                  'bg-emerald-50 text-emerald-700': dateStatus(selectedDate) === 'available',
-                  'bg-rose-50 text-rose-700': dateStatus(selectedDate) === 'unavailable',
-                  'bg-slate-100 text-slate-600': dateStatus(selectedDate) === 'unknown',
-                }"
-              >
-                <span
-                  class="h-2 w-2 rounded-full"
-                  :class="{
-                    'bg-emerald-500': dateStatus(selectedDate) === 'available',
-                    'bg-rose-500': dateStatus(selectedDate) === 'unavailable',
-                    'bg-slate-400': dateStatus(selectedDate) === 'unknown',
-                  }"
-                />
-                {{ dateStatus(selectedDate) === 'available' ? 'Available by date data' : dateStatus(selectedDate) === 'unavailable' ? 'Unavailable by date data' : 'No date data' }}
+                <span class="h-2.5 w-2.5 rounded-full" :class="statusDot[day.status]" />
+                {{ statusLabel[day.status] }}
               </span>
             </div>
-
-            <div class="mb-4 flex flex-wrap items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900">
-              <Clock3 class="mt-0.5 h-4 w-4 shrink-0" />
-              <p>Demo only: hourly slots are sample data. Click a slot to toggle its status; changes are not sent to the server or saved.</p>
-            </div>
-
-            <div class="overflow-hidden rounded-2xl border border-slate-200">
-              <div class="hidden grid-cols-[120px_1fr_150px] bg-slate-50 px-5 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 sm:grid">
-                <span>Time</span>
-                <span>Slot</span>
-                <span>Status</span>
-              </div>
-              <div class="divide-y divide-slate-100">
-                <button
-                  v-for="hour in hours"
-                  :key="hour"
-                  type="button"
-                  class="grid w-full grid-cols-1 items-center gap-2 px-4 py-3 text-left transition hover:bg-slate-50 sm:grid-cols-[120px_1fr_150px] sm:px-5"
-                  @click="toggleSlot(hour)"
-                >
-                  <span class="text-sm font-bold tabular-nums text-slate-800">
-                    {{ String(hour).padStart(2, '0') }}:00–{{ String(hour + 1).padStart(2, '0') }}:00
-                  </span>
-                  <span class="h-3 overflow-hidden rounded-full bg-slate-100">
-                    <span
-                      class="block h-full rounded-full transition-all"
-                      :class="slotStatus(hour) === 'available' ? 'w-full bg-emerald-400' : 'w-full bg-rose-400'"
-                    />
-                  </span>
-                  <span
-                    class="inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
-                    :class="slotStatus(hour) === 'available' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'"
-                  >
-                    <span class="h-1.5 w-1.5 rounded-full" :class="slotStatus(hour) === 'available' ? 'bg-emerald-500' : 'bg-rose-500'" />
-                    {{ slotStatus(hour) === 'available' ? 'Available' : 'Reserved' }}
-                  </span>
-                </button>
-              </div>
-            </div>
-            <p class="mt-3 text-center text-xs text-slate-400">Click any time slot to switch between available and reserved.</p>
           </div>
         </div>
 
         <footer class="flex items-center justify-between gap-3 border-t border-slate-200 px-4 py-3 sm:px-7">
-          <p class="text-xs text-slate-500">{{ item.categoryLabel }} · {{ item.sizes.length }} sizes</p>
+          <p class="text-xs text-slate-500">
+            {{ item.categoryLabel }} · {{ item.sizes.length }} sizes ·
+            {{ item.halfDayRate != null ? 'full & half days' : 'full days only' }}
+          </p>
           <button
             type="button"
             class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"

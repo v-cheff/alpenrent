@@ -26,6 +26,7 @@ class Equipment extends Model
         'image',
         'specs',
         'daily_rate',
+        'half_day_rate',
         'deposit',
         'sizes',
         'available_now',
@@ -40,6 +41,7 @@ class Equipment extends Model
             'available_now' => 'boolean',
             'available_dates' => 'array',
             'daily_rate' => 'decimal:2',
+            'half_day_rate' => 'decimal:2',
             'deposit' => 'decimal:2',
         ];
     }
@@ -83,6 +85,7 @@ class Equipment extends Model
             'image' => $this->image,
             'specs' => $this->specs ?? [],
             'dailyRate' => (float) $this->daily_rate,
+            'halfDayRate' => $this->half_day_rate === null ? null : (float) $this->half_day_rate,
             'deposit' => (float) $this->deposit,
             'sizes' => $this->sizes ?? [],
             'availableNow' => $this->available_now,

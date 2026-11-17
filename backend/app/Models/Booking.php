@@ -10,13 +10,54 @@ use Illuminate\Support\Carbon;
 
 class Booking extends Model
 {
+    /** Every date from start_date to end_date, both inclusive. */
+    public const FULL_DAY = 'full_day';
+
+    /** A single date, from noon. */
+    public const HALF_DAY = 'half_day';
+
+    public const RENTAL_TYPES = [self::FULL_DAY, self::HALF_DAY];
+
     protected $fillable = [
         'user_id',
         'equipment_id',
         'size',
+        'rental_type',
         'start_date',
         'end_date',
     ];
+
+    protected $attributes = [
+        'rental_type' => self::FULL_DAY,
+    ];
+
+    /**
+     * Rental days, counted inclusively the way ski rentals bill them (1–4 Dec = 4 days).
+     */
+    public function days(): int
+    {
+        if (! $this->start_date || ! $this->end_date) {
+            return 0;
+        }
+
+        return (int) $this->start_date->diffInDays($this->end_date) + 1;
+    }
+
+    /**
+     * Rental price at the equipment's current rates (null when equipment isn't loaded).
+     */
+    public function total(): ?float
+    {
+        if (! $this->relationLoaded('equipment') || ! $this->equipment) {
+            return null;
+        }
+
+        if ($this->rental_type === self::HALF_DAY) {
+            return (float) $this->equipment->half_day_rate;
+        }
+
+        return round((float) $this->equipment->daily_rate * $this->days(), 2);
+    }
 
     /**
      * Store dates as plain Y-m-d: the default `date` cast writes "Y-m-d H:i:s",
@@ -63,8 +104,11 @@ class Booking extends Model
             'id' => $this->id,
             'equipmentId' => $this->equipment_id,
             'size' => $this->size,
+            'rentalType' => $this->rental_type,
             'startDate' => $this->start_date?->toDateString(),
             'endDate' => $this->end_date?->toDateString(),
+            'days' => $this->days(),
+            'total' => $this->total(),
             'equipment' => $this->relationLoaded('equipment') && $this->equipment
                 ? $this->equipment->toApiArray()
                 : null,

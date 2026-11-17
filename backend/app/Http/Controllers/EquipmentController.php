@@ -63,6 +63,7 @@ class EquipmentController extends Controller
             'specs' => ['sometimes', 'array', 'max:3'],
             'specs.*' => ['required', 'string', 'max:80'],
             'dailyRate' => ['required', 'numeric', 'between:0,999999.99'],
+            'halfDayRate' => ['nullable', 'numeric', 'between:0,999999.99'],
             'deposit' => ['required', 'numeric', 'between:0,999999.99'],
             'sizes' => ['sometimes', 'array'],
             'sizes.*' => ['required', 'string', 'max:100'],
@@ -96,6 +97,7 @@ class EquipmentController extends Controller
                 'image' => $image,
                 'specs' => $validated['specs'] ?? [],
                 'daily_rate' => $validated['dailyRate'],
+                'half_day_rate' => $validated['halfDayRate'] ?? null,
                 'deposit' => $validated['deposit'],
                 'sizes' => $validated['sizes'] ?? [],
                 'available_now' => $validated['availableNow'],
@@ -128,6 +130,7 @@ class EquipmentController extends Controller
             'specs' => ['sometimes', 'array', 'max:3'],
             'specs.*' => ['required', 'string', 'max:80'],
             'dailyRate' => ['sometimes', 'required', 'numeric', 'between:0,999999.99'],
+            'halfDayRate' => ['nullable', 'numeric', 'between:0,999999.99'],
             'deposit' => ['sometimes', 'required', 'numeric', 'between:0,999999.99'],
             'sizes' => ['sometimes', 'array'],
             'sizes.*' => ['required', 'string', 'max:100'],
@@ -179,6 +182,10 @@ class EquipmentController extends Controller
             }
             if (array_key_exists('dailyRate', $validated)) {
                 $updateData['daily_rate'] = $validated['dailyRate'];
+            }
+            if (array_key_exists('halfDayRate', $validated)) {
+                // An empty value switches half-day rental off.
+                $updateData['half_day_rate'] = $validated['halfDayRate'];
             }
             if (array_key_exists('deposit', $validated)) {
                 $updateData['deposit'] = $validated['deposit'];

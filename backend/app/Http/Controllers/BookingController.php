@@ -7,6 +7,7 @@ use App\Models\Equipment;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class BookingController extends Controller
@@ -43,12 +44,16 @@ class BookingController extends Controller
         $validated = $request->validate([
             'equipmentId' => ['required', 'string', 'exists:equipment,id'],
             'size' => ['required', 'string', 'max:100'],
+            // Rental days are inclusive: 1–4 Dec is four ski days, 1–1 Dec is one.
             'startDate' => ['required', 'date_format:Y-m-d'],
-            'endDate' => ['required', 'date_format:Y-m-d', 'after:startDate'],
+            'endDate' => ['required', 'date_format:Y-m-d', 'after_or_equal:startDate'],
+            'rentalType' => ['sometimes', 'string', Rule::in(Booking::RENTAL_TYPES)],
         ]);
 
         $equipment = Equipment::query()->findOrFail($validated['equipmentId']);
+        $rentalType = $validated['rentalType'] ?? Booking::FULL_DAY;
 
+        $this->assertRentalType($equipment, $rentalType, $validated['startDate'], $validated['endDate']);
         $this->assertBookable(
             $equipment,
             $validated['size'],
@@ -59,11 +64,12 @@ class BookingController extends Controller
         $booking = $request->user()->bookings()->create([
             'equipment_id' => $equipment->id,
             'size' => $validated['size'],
+            'rental_type' => $rentalType,
             'start_date' => $validated['startDate'],
             'end_date' => $validated['endDate'],
         ]);
 
-        return response()->json($booking->load('equipment')->toApiArray(), 201);
+        return response()->json($booking->load('equipment.rentalPoint')->toApiArray(), 201);
     }
 
     public function update(Request $request, Booking $booking): JsonResponse
@@ -74,20 +80,25 @@ class BookingController extends Controller
             'size' => ['sometimes', 'required', 'string', 'max:100'],
             'startDate' => ['sometimes', 'required', 'date_format:Y-m-d'],
             'endDate' => ['sometimes', 'required', 'date_format:Y-m-d'],
+            'rentalType' => ['sometimes', 'string', Rule::in(Booking::RENTAL_TYPES)],
         ]);
 
         $size = $validated['size'] ?? $booking->size;
         $startDate = $validated['startDate'] ?? $booking->start_date->toDateString();
         $endDate = $validated['endDate'] ?? $booking->end_date->toDateString();
+        $rentalType = $validated['rentalType'] ?? $booking->rental_type;
 
-        if ($endDate <= $startDate) {
+        if ($endDate < $startDate) {
             throw ValidationException::withMessages([
-                'endDate' => ['The end date must be after the start date.'],
+                'endDate' => ['The end date must be on or after the start date.'],
             ]);
         }
 
+        $equipment = $booking->equipment()->firstOrFail();
+
+        $this->assertRentalType($equipment, $rentalType, $startDate, $endDate);
         $this->assertBookable(
-            $booking->equipment()->firstOrFail(),
+            $equipment,
             $size,
             $startDate,
             $endDate,
@@ -96,11 +107,12 @@ class BookingController extends Controller
 
         $booking->update([
             'size' => $size,
+            'rental_type' => $rentalType,
             'start_date' => $startDate,
             'end_date' => $endDate,
         ]);
 
-        return response()->json($booking->fresh('equipment')->toApiArray());
+        return response()->json($booking->fresh('equipment.rentalPoint')->toApiArray());
     }
 
     public function destroy(Request $request, Booking $booking): JsonResponse
@@ -118,6 +130,25 @@ class BookingController extends Controller
     {
         if ($booking->user_id !== $request->user()->id) {
             abort(404);
+        }
+    }
+
+    private function assertRentalType(Equipment $equipment, string $rentalType, string $startDate, string $endDate): void
+    {
+        if ($rentalType !== Booking::HALF_DAY) {
+            return;
+        }
+
+        if ($startDate !== $endDate) {
+            throw ValidationException::withMessages([
+                'rentalType' => ['A half-day rental covers a single date.'],
+            ]);
+        }
+
+        if ($equipment->half_day_rate === null) {
+            throw ValidationException::withMessages([
+                'rentalType' => ['This equipment is not offered for half-day rental.'],
+            ]);
         }
     }
 
