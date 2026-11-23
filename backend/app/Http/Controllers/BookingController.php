@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Booking;
 use App\Models\Equipment;
-use Carbon\CarbonPeriod;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -45,7 +44,7 @@ class BookingController extends Controller
             'equipmentId' => ['required', 'string', 'exists:equipment,id'],
             'size' => ['required', 'string', 'max:100'],
             // Rental days are inclusive: 1–4 Dec is four ski days, 1–1 Dec is one.
-            'startDate' => ['required', 'date_format:Y-m-d'],
+            'startDate' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
             'endDate' => ['required', 'date_format:Y-m-d', 'after_or_equal:startDate'],
             'rentalType' => ['sometimes', 'string', Rule::in(Booking::RENTAL_TYPES)],
         ]);
@@ -78,7 +77,7 @@ class BookingController extends Controller
 
         $validated = $request->validate([
             'size' => ['sometimes', 'required', 'string', 'max:100'],
-            'startDate' => ['sometimes', 'required', 'date_format:Y-m-d'],
+            'startDate' => ['sometimes', 'required', 'date_format:Y-m-d', 'after_or_equal:today'],
             'endDate' => ['sometimes', 'required', 'date_format:Y-m-d'],
             'rentalType' => ['sometimes', 'string', Rule::in(Booking::RENTAL_TYPES)],
         ]);
@@ -167,7 +166,7 @@ class BookingController extends Controller
             ]);
         }
 
-        if (! $this->hasStockForPeriod($equipment, $startDate, $endDate)) {
+        if (! $equipment->isInStockFor($startDate, $endDate)) {
             throw ValidationException::withMessages([
                 'startDate' => ['This equipment is not available for the selected dates.'],
             ]);
@@ -185,22 +184,5 @@ class BookingController extends Controller
                 'startDate' => ['This size is already booked for the selected dates.'],
             ]);
         }
-    }
-
-    private function hasStockForPeriod(Equipment $equipment, string $startDate, string $endDate): bool
-    {
-        if ($equipment->available_now) {
-            return true;
-        }
-
-        $availableDates = $equipment->available_dates ?? [];
-
-        foreach (CarbonPeriod::create($startDate, $endDate) as $date) {
-            if (! in_array($date->toDateString(), $availableDates, true)) {
-                return false;
-            }
-        }
-
-        return true;
     }
 };

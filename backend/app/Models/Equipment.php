@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\CarbonPeriod;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -69,6 +70,40 @@ class Equipment extends Model
         return $this->rentalPoint !== null && $this->rentalPoint->user_id === $user->id;
     }
 
+    /**
+     * Whether the owner offers this item for every date of the period (both ends inclusive).
+     * "Available now" means it can be rented any day; otherwise only on the listed dates.
+     */
+    public function isInStockFor(string $startDate, string $endDate): bool
+    {
+        if ($this->available_now) {
+            return true;
+        }
+
+        $availableDates = $this->available_dates ?? [];
+
+        foreach (CarbonPeriod::create($startDate, $endDate) as $date) {
+            if (! in_array($date->toDateString(), $availableDates, true)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Seeded images are stored as paths ("/images/equipment/…") so they work on any host;
+     * uploads and external links are stored as full URLs.
+     */
+    public function imageUrl(): ?string
+    {
+        if ($this->image && str_starts_with($this->image, '/')) {
+            return url($this->image);
+        }
+
+        return $this->image;
+    }
+
     public function toApiArray(): array
     {
         return [
@@ -82,7 +117,7 @@ class Equipment extends Model
             'categoryLabel' => $this->category_label,
             'badge' => $this->badge,
             'badgeTone' => $this->badge_tone,
-            'image' => $this->image,
+            'image' => $this->imageUrl(),
             'specs' => $this->specs ?? [],
             'dailyRate' => (float) $this->daily_rate,
             'halfDayRate' => $this->half_day_rate === null ? null : (float) $this->half_day_rate,

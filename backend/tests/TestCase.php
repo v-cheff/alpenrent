@@ -3,6 +3,7 @@
 namespace Tests;
 
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\Carbon;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -19,5 +20,15 @@ abstract class TestCase extends BaseTestCase
         }
 
         parent::setUp();
+
+        // Bookings must start today or later; tests use fixed December 2026 dates.
+        Carbon::setTestNow('2026-11-15 10:00:00');
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+
+        parent::tearDown();
     }
 }

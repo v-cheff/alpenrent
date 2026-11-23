@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -11,17 +10,14 @@ class DatabaseSeeder extends Seeder
     use WithoutModelEvents;
 
     /**
-     * Seed the application's database.
+     * Demo data for a fresh install: `php artisan migrate:fresh --seed`.
+     * One renter, one owner with two rental points and equipment at each.
      */
     public function run(): void
     {
-        $this->call(EquipmentSeeder::class);
-
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        $this->call([
+            DemoAccountsSeeder::class,
+            EquipmentSeeder::class,
         ]);
     }
 }

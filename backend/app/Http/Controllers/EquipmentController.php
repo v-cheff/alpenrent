@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Booking;
 use App\Models\Equipment;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,16 +17,62 @@ class EquipmentController extends Controller
 {
     /**
      * Public catalog: equipment from every rental point.
+     *
+     * Optional filters: rentalPointId, and a startDate/endDate period. With a period each item
+     * gets `availableSizes` — the sizes that are in stock and not booked on any of those dates.
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $equipment = Equipment::query()
+        $validated = $request->validate([
+            'rentalPointId' => ['nullable', 'integer'],
+            'startDate' => ['nullable', 'required_with:endDate', 'date_format:Y-m-d'],
+            'endDate' => ['nullable', 'required_with:startDate', 'date_format:Y-m-d', 'after_or_equal:startDate'],
+        ]);
+
+        $items = Equipment::query()
+            ->whereNotNull('rental_point_id')
+            ->when(
+                $validated['rentalPointId'] ?? null,
+                fn ($query, $pointId) => $query->where('rental_point_id', $pointId),
+            )
             ->with('rentalPoint')
             ->orderByDesc('created_at')
-            ->get()
-            ->map(fn (Equipment $item) => $item->toApiArray());
+            ->get();
+
+        $startDate = $validated['startDate'] ?? null;
+        $endDate = $validated['endDate'] ?? null;
+        $bookedSizes = $startDate ? $this->bookedSizes($items->modelKeys(), $startDate, $endDate) : null;
+
+        $equipment = $items->map(function (Equipment $item) use ($bookedSizes, $startDate, $endDate) {
+            $data = $item->toApiArray();
+
+            if ($bookedSizes !== null) {
+                $data['availableSizes'] = $item->isInStockFor($startDate, $endDate)
+                    ? array_values(array_diff($item->sizes ?? [], $bookedSizes[$item->id] ?? []))
+                    : [];
+            }
+
+            return $data;
+        });
 
         return response()->json($equipment);
+    }
+
+    /**
+     * Sizes already booked during the period, keyed by equipment id.
+     *
+     * @param  array<int, string>  $equipmentIds
+     * @return array<string, array<int, string>>
+     */
+    private function bookedSizes(array $equipmentIds, string $startDate, string $endDate): array
+    {
+        return Booking::query()
+            ->whereIn('equipment_id', $equipmentIds)
+            ->overlapping($startDate, $endDate)
+            ->get(['equipment_id', 'size'])
+            ->groupBy('equipment_id')
+            ->map(fn ($bookings) => $bookings->pluck('size')->unique()->values()->all())
+            ->all();
     }
 
     /**

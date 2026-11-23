@@ -7,6 +7,7 @@ import { useAuth } from '../composables/useAuth'
 const {
   state,
   selectedItem,
+  freeSizes,
   durationDays,
   halfDayAvailable,
   effectiveRentalType,
@@ -64,16 +65,24 @@ async function confirm() {
             type="button"
             class="min-w-[3.5rem] rounded-xl px-3 py-2 text-sm font-bold ring-1 transition"
             :class="
-              state.selectedSize === size
-                ? 'bg-slateink text-white ring-slateink'
-                : 'bg-slate-50 text-slate-700 ring-slate-200 hover:bg-white'
+              !freeSizes.includes(size)
+                ? 'cursor-not-allowed bg-slate-50 text-slate-300 line-through ring-slate-100'
+                : state.selectedSize === size
+                  ? 'bg-slateink text-white ring-slateink'
+                  : 'bg-slate-50 text-slate-700 ring-slate-200 hover:bg-white'
             "
-            :disabled="state.bookingSubmitting"
+            :disabled="state.bookingSubmitting || !freeSizes.includes(size)"
+            :title="freeSizes.includes(size) ? '' : 'Already booked for these dates'"
             @click="selectSize(size)"
           >
             {{ size }}
           </button>
         </div>
+        <p v-if="selectedItem.rentalPoint" class="mt-3 text-xs text-slate-500">
+          Pickup: <span class="font-semibold text-slate-700">{{ selectedItem.rentalPoint.name }}</span>
+          <template v-if="selectedItem.rentalPoint.address"> · {{ selectedItem.rentalPoint.address }}</template>
+          <template v-if="selectedItem.rentalPoint.openingHours"> · {{ selectedItem.rentalPoint.openingHours }}</template>
+        </p>
 
         <button
           type="button"

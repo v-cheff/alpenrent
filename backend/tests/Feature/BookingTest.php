@@ -105,6 +105,32 @@ class BookingTest extends TestCase
             ->assertJsonValidationErrors('endDate');
     }
 
+    public function test_booking_cannot_start_in_the_past(): void
+    {
+        [, $token] = $this->authenticatedUser();
+        $this->createEquipment();
+
+        // "Now" is frozen at 2026-11-15 in TestCase.
+        $this->withToken($token)
+            ->postJson('/v1/bookings', [
+                'equipmentId' => 'test-ski',
+                'size' => '160',
+                'startDate' => '2026-11-14',
+                'endDate' => '2026-11-16',
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('startDate');
+
+        $this->withToken($token)
+            ->postJson('/v1/bookings', [
+                'equipmentId' => 'test-ski',
+                'size' => '160',
+                'startDate' => '2026-11-15',
+                'endDate' => '2026-11-15',
+            ])
+            ->assertCreated();
+    }
+
     public function test_booking_days_are_counted_inclusively(): void
     {
         [, $token] = $this->authenticatedUser();

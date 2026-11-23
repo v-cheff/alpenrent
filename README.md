@@ -6,13 +6,39 @@
 
 ```sh
 docker compose up --build -d
-docker compose exec backend php artisan migrate
-docker compose exec backend php artisan db:seed --class=EquipmentSeeder
+docker compose exec backend php artisan migrate --seed
 docker compose exec backend php artisan storage:link
 ```
 
 После запуска приложение доступно на [http://localhost:8000](http://localhost:8000),
 frontend — на [http://localhost:5173](http://localhost:5173).
+
+### Демо-аккаунты
+
+Сидер (`DatabaseSeeder`) создаёт двух пользователей — по одному на каждую роль.
+Пароль у обоих `password`.
+
+| Роль | Email | Имя | Что есть |
+| --- | --- | --- | --- |
+| Арендатор (`renter`) | `renter@example.com` | Anna Huber | пустой список броней — можно сразу бронировать из каталога |
+| Владелец (`owner`) | `owner@example.com` | Tirol Ski Rent | две точки проката с оборудованием |
+
+Точки владельца:
+
+- **Innsbruck City Store** — Maria-Theresien-Straße 18, Innsbruck, 08:00–19:00:
+  два лыжных комплекта, ботинки, детский комплект;
+- **St. Anton Base Station** — Dorfstraße 3, St. Anton am Arlberg, 07:30–18:00:
+  фрирайд-лыжи, два сноуборда, шлем с маской, детский комплект.
+
+Это вымышленные данные только для локальной разработки. Фотографии оборудования
+лежат в репозитории (`backend/public/images/equipment`, фото с Unsplash по Unsplash
+License), поэтому открываются без внешних ссылок.
+
+Пересоздать базу с нуля (все данные будут удалены):
+
+```sh
+docker compose exec backend php artisan migrate:fresh --seed
+```
 
 Базовый URL API для frontend указан в `frontend/.env` в переменной
 `VITE_API_URL`. Vite загружает файл автоматически; если адрес backend изменится,
@@ -81,5 +107,16 @@ API владельца (требует `Authorization: Bearer <token>` и рол
 
 API возвращает у брони `days` и `total` (по текущим ценам оборудования).
 
-Сидер создаёт демо-владельца `owner@example.com` (пароль `password`) с четырьмя
-точками проката, между которыми распределено демо-оборудование.
+### Главная страница
+
+Каталог и список «Pickup location» берутся из базы — это точки и оборудование,
+которые добавили владельцы. Публичные эндпоинты:
+
+| Метод | Путь | Назначение |
+| --- | --- | --- |
+| GET | `/v1/rental-points` | точки проката, где есть оборудование |
+| GET | `/v1/equipment?rentalPointId=&startDate=&endDate=` | каталог; с датами у каждой позиции есть `availableSizes` — размеры, свободные на весь период |
+
+Занятые размеры нельзя выбрать в окне бронирования, а позиция без свободных
+размеров помечается «Booked out for these dates». После брони каталог
+обновляется.

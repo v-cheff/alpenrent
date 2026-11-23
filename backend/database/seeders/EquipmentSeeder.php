@@ -6,208 +6,185 @@ use App\Models\Equipment;
 use App\Models\RentalPoint;
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 
+/**
+ * Two rental points of the demo owner, each with its own equipment.
+ * Images live in backend/public/images/equipment (photos from Unsplash, Unsplash License).
+ */
 class EquipmentSeeder extends Seeder
 {
-    /**
-     * Demo owner account that runs the seeded rental points (password: "password").
-     */
-    public const OWNER_EMAIL = 'owner@example.com';
-
     public function run(): void
     {
-        $owner = User::query()->firstOrCreate(
-            ['email' => self::OWNER_EMAIL],
-            ['name' => 'AlpenRent Tyrol', 'password' => Hash::make('password'), 'role' => User::ROLE_OWNER],
-        );
+        $owner = User::query()->where('email', DemoAccountsSeeder::OWNER_EMAIL)->firstOrFail();
 
-        // The account may have been created before roles existed.
-        if (! $owner->isOwner()) {
-            $owner->update(['role' => User::ROLE_OWNER]);
-        }
+        foreach ($this->catalog() as $pointData) {
+            $items = $pointData['equipment'];
+            unset($pointData['equipment']);
 
-        $points = collect([
-            'innsbruck' => ['name' => 'Innsbruck Central Store', 'address' => 'Maria-Theresien-Straße 1, Innsbruck', 'opening_hours' => '08:00–20:00'],
-            'stanton' => ['name' => 'St. Anton Base Station', 'address' => 'Dorfstraße 10, St. Anton am Arlberg', 'opening_hours' => '07:30–18:00'],
-            'solden' => ['name' => 'Sölden Glacier Hub', 'address' => 'Gaislachkoglbahn valley station, Sölden', 'opening_hours' => '08:00–18:30'],
-            'kitz' => ['name' => 'Kitzbühel Town Shop', 'address' => 'Hahnenkammstraße 5, Kitzbühel', 'opening_hours' => '08:00–19:00'],
-        ])->map(fn (array $point) => RentalPoint::query()->firstOrCreate(
-            ['user_id' => $owner->id, 'name' => $point['name']],
-            $point,
-        ));
-
-        $pointByEquipment = [
-            'atomic-redster' => 'innsbruck',
-            'rossignol-experience' => 'innsbruck',
-            'head-kore' => 'stanton',
-            'burton-custom' => 'stanton',
-            'jones-mind' => 'solden',
-            'lange-shadow' => 'solden',
-            'poc-obex' => 'kitz',
-            'kids-atomic' => 'kitz',
-            'kids-burton' => 'innsbruck',
-        ];
-
-        $equipment = [
-            [
-                'id' => 'atomic-redster',
-                'name' => 'Atomic Redster S9 Revoshock',
-                'category' => 'ski',
-                'category_label' => 'Performance Ski Set',
-                'badge' => 'Model 2026',
-                'badge_tone' => 'new',
-                'image' => 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?auto=format&fit=crop&w=900&q=80',
-                'specs' => ['Radius 13.5 m', 'Camber race profile', 'Includes poles'],
-                'daily_rate' => 49,
-                'half_day_rate' => round(49 * 0.65),
-                'deposit' => 150,
-                'sizes' => ['150', '157', '165', '172'],
-                'available_now' => true,
-                'available_dates' => ['2026-10-16', '2026-10-18', '2026-10-20'],
-            ],
-            [
-                'id' => 'rossignol-experience',
-                'name' => 'Rossignol Experience 86 Basalt',
-                'category' => 'ski',
-                'category_label' => 'All-Mountain Ski Set',
-                'badge' => 'Freshly Waxed',
-                'badge_tone' => 'waxed',
-                'image' => 'https://images.unsplash.com/photo-1605540436563-5bca919ae766?auto=format&fit=crop&w=900&q=80',
-                'specs' => ['Radius 16 m', 'Air Tip rocker', 'ISO 11088 bindings'],
-                'daily_rate' => 39,
-                'half_day_rate' => round(39 * 0.65),
-                'deposit' => 80,
-                'sizes' => ['146', '154', '162', '170', '178'],
-                'available_now' => false,
-                'available_dates' => ['2026-10-17', '2026-10-21'],
-            ],
-            [
-                'id' => 'head-kore',
-                'name' => 'HEAD Kore 93',
-                'category' => 'ski',
-                'category_label' => 'Freeride Ski Set',
-                'badge' => 'Freshly Waxed',
-                'badge_tone' => 'waxed',
-                'image' => 'https://images.unsplash.com/photo-1483664852095-d6cc6870703d?auto=format&fit=crop&w=900&q=80',
-                'specs' => ['Radius 17.8 m', 'Tip & tail rocker', 'Carbon sandwich'],
-                'daily_rate' => 45,
-                'half_day_rate' => round(45 * 0.65),
-                'deposit' => 120,
-                'sizes' => ['156', '163', '170', '177', '184'],
-                'available_now' => true,
-                'available_dates' => ['2026-10-16', '2026-10-19', '2026-10-22'],
-            ],
-            [
-                'id' => 'burton-custom',
-                'name' => 'Burton Custom Camber',
-                'category' => 'board',
-                'category_label' => 'All-Mountain Snowboard',
-                'badge' => 'Model 2026',
-                'badge_tone' => 'new',
-                'image' => 'https://images.unsplash.com/photo-1522056615691-da7b8106c665?auto=format&fit=crop&w=900&q=80',
-                'specs' => ['Camber pop', 'Directional twin', 'Channel bindings'],
-                'daily_rate' => 42,
-                'half_day_rate' => round(42 * 0.65),
-                'deposit' => 100,
-                'sizes' => ['148', '152', '156', '158W', '162'],
-                'available_now' => true,
-                'available_dates' => ['2026-10-16', '2026-10-17', '2026-10-23'],
-            ],
-            [
-                'id' => 'jones-mind',
-                'name' => 'Jones Mind Expander',
-                'category' => 'board',
-                'category_label' => 'Powder Snowboard',
-                'badge' => 'Freshly Waxed',
-                'badge_tone' => 'waxed',
-                'image' => 'https://images.unsplash.com/photo-1518085250887-2f833c18b9d4?auto=format&fit=crop&w=900&q=80',
-                'specs' => ['Spoon 3.0 nose', '3D contour base', 'Swallow tail'],
-                'daily_rate' => 48,
-                'half_day_rate' => round(48 * 0.65),
-                'deposit' => 130,
-                'sizes' => ['146', '150', '154', '158'],
-                'available_now' => false,
-                'available_dates' => ['2026-10-22', '2026-10-23'],
-            ],
-            [
-                'id' => 'lange-shadow',
-                'name' => 'Lange Shadow 120 LV',
-                'category' => 'boots',
-                'category_label' => 'Alpine Ski Boots',
-                'badge' => 'Heat-moldable',
-                'badge_tone' => 'info',
-                'image' => 'https://images.unsplash.com/photo-1578662996442-48f36e048e72?auto=format&fit=crop&w=900&q=80',
-                'specs' => ['Flex 120', 'Last 97 mm', 'GripWalk soles'],
-                'daily_rate' => 22,
-                'half_day_rate' => round(22 * 0.65),
-                'deposit' => 50,
-                'sizes' => ['24.5', '25.5', '26.5', '27.5', '28.5'],
-                'available_now' => true,
-                'available_dates' => ['2026-10-16', '2026-10-18', '2026-10-19'],
-            ],
-            [
-                'id' => 'poc-obex',
-                'name' => 'POC Obex BC MIPS + Visor',
-                'category' => 'boots',
-                'category_label' => 'Helmet & Protection',
-                'badge' => 'MIPS',
-                'badge_tone' => 'info',
-                'image' => 'https://images.unsplash.com/photo-1516731415730-0c1374e67dba?auto=format&fit=crop&w=900&q=80',
-                'specs' => ['MIPS liner', 'RECCO reflector', 'Category 3 visor'],
-                'daily_rate' => 12,
-                'half_day_rate' => round(12 * 0.65),
-                'deposit' => 40,
-                'sizes' => ['XS/S', 'M/L', 'XL'],
-                'available_now' => true,
-                'available_dates' => ['2026-10-16', '2026-10-17'],
-            ],
-            [
-                'id' => 'kids-atomic',
-                'name' => 'Atomic Maven Girl / Redster J',
-                'category' => 'kids',
-                'category_label' => 'Kids Ski Set',
-                'badge' => 'Kids 4–12',
-                'badge_tone' => 'kids',
-                'image' => 'https://images.unsplash.com/photo-1548777123-e27896422455?auto=format&fit=crop&w=900&q=80',
-                'specs' => ['Soft flex bindings', 'Helmet included', 'Parent-friendly size chart'],
-                'daily_rate' => 24,
-                'half_day_rate' => round(24 * 0.65),
-                'deposit' => 40,
-                'sizes' => ['90', '100', '110', '120', '130'],
-                'available_now' => false,
-                'available_dates' => ['2026-10-17', '2026-10-18'],
-            ],
-            [
-                'id' => 'kids-burton',
-                'name' => 'Burton Mini Grom Package',
-                'category' => 'kids',
-                'category_label' => 'Kids Snowboard Set',
-                'badge' => 'Kids 5–12',
-                'badge_tone' => 'kids',
-                'image' => 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=900&q=80',
-                'specs' => ['Soft bindings', 'Easy-entry boots', 'Park-ready twin'],
-                'daily_rate' => 26,
-                'half_day_rate' => round(26 * 0.65),
-                'deposit' => 45,
-                'sizes' => ['110', '120', '130', '134'],
-                'available_now' => true,
-                'available_dates' => ['2026-10-18', '2026-10-19', '2026-10-20'],
-            ],
-        ];
-
-        foreach ($equipment as $item) {
-            $pointId = $points[$pointByEquipment[$item['id']] ?? 'innsbruck']->id;
-
-            $record = Equipment::query()->firstOrCreate(
-                ['id' => $item['id']],
-                [...$item, 'rental_point_id' => $pointId],
+            $point = RentalPoint::query()->updateOrCreate(
+                ['user_id' => $owner->id, 'name' => $pointData['name']],
+                $pointData,
             );
 
-            // Equipment seeded before rental points existed has no owner yet.
-            if ($record->rental_point_id === null) {
-                $record->update(['rental_point_id' => $pointId]);
+            foreach ($items as $item) {
+                Equipment::query()->updateOrCreate(
+                    ['id' => $item['id']],
+                    [
+                        'category_label' => 'Equipment',
+                        'badge_tone' => 'new',
+                        'available_now' => true,
+                        'available_dates' => [],
+                        ...$item,
+                        'rental_point_id' => $point->id,
+                    ],
+                );
             }
         }
+    }
+
+    private function catalog(): array
+    {
+        return [
+            [
+                'name' => 'Innsbruck City Store',
+                'address' => 'Maria-Theresien-Straße 18, 6020 Innsbruck',
+                'opening_hours' => '08:00–19:00',
+                'equipment' => [
+                    [
+                        'id' => 'atomic-redster-s9',
+                        'name' => 'Atomic Redster S9 Revoshock',
+                        'category' => 'ski',
+                        'category_label' => 'Performance Ski Set',
+                        'badge' => 'Model 2026',
+                        'badge_tone' => 'new',
+                        'image' => '/images/equipment/ski-carving.jpg',
+                        'specs' => ['Radius 13.5 m', 'Race camber', 'Poles included'],
+                        'daily_rate' => 49,
+                        'half_day_rate' => 32,
+                        'deposit' => 150,
+                        'sizes' => ['150', '157', '165', '172'],
+                    ],
+                    [
+                        'id' => 'rossignol-experience-86',
+                        'name' => 'Rossignol Experience 86 Basalt',
+                        'category' => 'ski',
+                        'category_label' => 'All-Mountain Ski Set',
+                        'badge' => 'Freshly Waxed',
+                        'badge_tone' => 'waxed',
+                        'image' => '/images/equipment/ski-allmountain.jpg',
+                        'specs' => ['Radius 16 m', 'Air Tip rocker', 'ISO 11088 bindings'],
+                        'daily_rate' => 39,
+                        'half_day_rate' => 25,
+                        'deposit' => 80,
+                        'sizes' => ['146', '154', '162', '170', '178'],
+                    ],
+                    [
+                        'id' => 'lange-shadow-120',
+                        'name' => 'Lange Shadow 120 LV',
+                        'category' => 'boots',
+                        'category_label' => 'Alpine Ski Boots',
+                        'badge' => 'Heat-moldable',
+                        'badge_tone' => 'info',
+                        'image' => '/images/equipment/ski-boots.jpg',
+                        'specs' => ['Flex 120', 'Last 97 mm', 'GripWalk soles'],
+                        'daily_rate' => 22,
+                        'half_day_rate' => 14,
+                        'deposit' => 50,
+                        'sizes' => ['24.5', '25.5', '26.5', '27.5', '28.5'],
+                    ],
+                    [
+                        'id' => 'atomic-redster-junior',
+                        'name' => 'Atomic Redster J Kids Set',
+                        'category' => 'kids',
+                        'category_label' => 'Kids Ski Set',
+                        'badge' => 'Kids 4–12',
+                        'badge_tone' => 'kids',
+                        'image' => '/images/equipment/kids-ski-school.jpg',
+                        'specs' => ['Soft-flex bindings', 'Helmet included', 'Ski school ready'],
+                        'daily_rate' => 24,
+                        'half_day_rate' => 15,
+                        'deposit' => 40,
+                        'sizes' => ['90', '100', '110', '120', '130'],
+                    ],
+                ],
+            ],
+            [
+                'name' => 'St. Anton Base Station',
+                'address' => 'Dorfstraße 3, 6580 St. Anton am Arlberg',
+                'opening_hours' => '07:30–18:00',
+                'equipment' => [
+                    [
+                        'id' => 'head-kore-93',
+                        'name' => 'HEAD Kore 93',
+                        'category' => 'ski',
+                        'category_label' => 'Freeride Ski Set',
+                        'badge' => 'Freshly Waxed',
+                        'badge_tone' => 'waxed',
+                        'image' => '/images/equipment/ski-set-slope.jpg',
+                        'specs' => ['Radius 17.8 m', 'Tip & tail rocker', 'Carbon sandwich'],
+                        'daily_rate' => 45,
+                        'half_day_rate' => 29,
+                        'deposit' => 120,
+                        'sizes' => ['156', '163', '170', '177', '184'],
+                    ],
+                    [
+                        'id' => 'burton-custom-camber',
+                        'name' => 'Burton Custom Camber',
+                        'category' => 'board',
+                        'category_label' => 'All-Mountain Snowboard',
+                        'badge' => 'Model 2026',
+                        'badge_tone' => 'new',
+                        'image' => '/images/equipment/snowboard-carry.jpg',
+                        'specs' => ['Camber pop', 'Directional twin', 'Bindings included'],
+                        'daily_rate' => 42,
+                        'half_day_rate' => 27,
+                        'deposit' => 100,
+                        'sizes' => ['148', '152', '156', '158W', '162'],
+                    ],
+                    [
+                        'id' => 'jones-mind-expander',
+                        'name' => 'Jones Mind Expander',
+                        'category' => 'board',
+                        'category_label' => 'Powder Snowboard',
+                        'badge' => 'Freshly Waxed',
+                        'badge_tone' => 'waxed',
+                        'image' => '/images/equipment/snowboard-ride.jpg',
+                        'specs' => ['Spoon nose', '3D contour base', 'Swallow tail'],
+                        'daily_rate' => 48,
+                        'half_day_rate' => null,
+                        'deposit' => 130,
+                        'sizes' => ['146', '150', '154', '158'],
+                    ],
+                    [
+                        'id' => 'poc-obex-mips',
+                        'name' => 'POC Obex MIPS Helmet + Goggles',
+                        'category' => 'boots',
+                        'category_label' => 'Helmet & Goggles',
+                        'badge' => 'MIPS',
+                        'badge_tone' => 'info',
+                        'image' => '/images/equipment/helmet-goggles.jpg',
+                        'specs' => ['MIPS liner', 'RECCO reflector', 'Category 3 lens'],
+                        'daily_rate' => 12,
+                        'half_day_rate' => 8,
+                        'deposit' => 40,
+                        'sizes' => ['XS/S', 'M/L', 'XL'],
+                    ],
+                    [
+                        'id' => 'elan-jett-kids',
+                        'name' => 'Elan Jett Kids Set',
+                        'category' => 'kids',
+                        'category_label' => 'Kids Ski Set',
+                        'badge' => 'Kids 3–10',
+                        'badge_tone' => 'kids',
+                        'image' => '/images/equipment/kids-ski-lesson.jpg',
+                        'specs' => ['Easy-turn sidecut', 'Helmet included', 'Parent-friendly sizing'],
+                        'daily_rate' => 22,
+                        'half_day_rate' => 14,
+                        'deposit' => 40,
+                        'sizes' => ['80', '90', '100', '110', '120'],
+                    ],
+                ],
+            ],
+        ];
     }
 }

@@ -1,50 +1,85 @@
-
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { catalogTabs } from '../data/catalog'
 import { useBooking } from '../composables/useBooking'
 import { getEquipment } from '../api/equipment'
+import { bookingDatesLabel } from '../utils/bookings.js'
 import ProductCard from './ProductCard.vue'
 import Spinner from './Spinner.vue'
 
-const { state } = useBooking()
+const { state, location } = useBooking()
 
 const activeTab = ref('all')
 const equipment = ref([])
 const isLoading = ref(false)
 const error = ref('')
+let requestId = 0
 
+// The API loader stays at least this long so the grid doesn't flash/jump on fast responses.
+// Category tabs and "show booked out" filter already-loaded data, so they switch instantly.
+const MIN_LOADER_MS = 450
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+const isBusy = isLoading
+
+// Live data: equipment owners listed, with sizes still free for the selected dates and store.
 const loadEquipment = async () => {
+  const current = ++requestId
+  const startedAt = Date.now()
   isLoading.value = true
   error.value = ''
 
   try {
-    const data = await getEquipment()
-    
+    const data = await getEquipment({
+      rentalPointId: state.rentalPointId,
+      startDate: state.startDate,
+      endDate: state.endDate,
+    })
+
     if (!Array.isArray(data)) {
       throw new Error('Invalid equipment data format')
     }
 
-    equipment.value = data
+    await wait(MIN_LOADER_MS - (Date.now() - startedAt))
+
+    // Ignore responses that arrive after a newer request (fast date changes).
+    if (current === requestId) equipment.value = data
   } catch (err) {
     console.error('Failed to load equipment:', err)
-    error.value = 'Unable to load products. Please try again.'
+    if (current === requestId) error.value = 'Unable to load products. Please try again.'
   } finally {
-    isLoading.value = false
+    if (current === requestId) isLoading.value = false
   }
 }
 
-const filtered = computed(() => {
-  if (activeTab.value === 'all') {
-    return equipment.value
-  }
+const showBookedOut = ref(false)
 
-  return equipment.value.filter(
-    (item) => item.category === activeTab.value
-  )
-})
+const isFree = (item) =>
+  !Array.isArray(item.availableSizes) || item.availableSizes.length > 0
 
-onMounted(loadEquipment)
+const inTab = computed(() =>
+  activeTab.value === 'all'
+    ? equipment.value
+    : equipment.value.filter((item) => item.category === activeTab.value),
+)
+
+// Items with no free size for the selected dates are hidden unless asked for.
+const bookedOutCount = computed(() => inTab.value.filter((item) => !isFree(item)).length)
+const availableCount = computed(() => inTab.value.length - bookedOutCount.value)
+
+const filtered = computed(() =>
+  showBookedOut.value ? inTab.value : inTab.value.filter(isFree),
+)
+
+const periodLabel = computed(() =>
+  bookingDatesLabel({ startDate: state.startDate, endDate: state.endDate }),
+)
+
+watch(
+  () => [state.startDate, state.endDate, state.rentalPointId, state.catalogVersion],
+  loadEquipment,
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -72,14 +107,18 @@ onMounted(loadEquipment)
             Tuned gear, ready to ride
           </h2>
 
-          <p
-            v-if="state.availabilityChecked"
-            class="mt-2 text-sm font-medium text-emerald-700"
-          >
-            Availability confirmed for
-            {{ state.startDate }} → {{ state.endDate }}
-            at your selected store.
+          <p class="mt-2 text-sm font-medium text-emerald-700">
+            {{ availableCount }} available for {{ periodLabel }} ·
+            {{ location ? location.name : 'all rental points' }}
           </p>
+          <button
+            v-if="bookedOutCount"
+            type="button"
+            class="mt-1 text-sm font-semibold text-slate-500 underline-offset-2 hover:text-slateink hover:underline"
+            @click="showBookedOut = !showBookedOut"
+          >
+            {{ showBookedOut ? 'Hide' : 'Show' }} {{ bookedOutCount }} booked out
+          </button>
         </div>
 
         <p class="max-w-sm text-sm leading-relaxed text-slate-500">
@@ -110,8 +149,9 @@ onMounted(loadEquipment)
         </button>
       </div>
 
+      <div class="relative min-h-[16rem]" :aria-busy="isBusy">
       <div
-        v-if="isLoading"
+        v-if="isLoading && !equipment.length"
         class="flex justify-center py-12"
         role="status"
         aria-label="Loading products"
@@ -156,12 +196,32 @@ onMounted(loadEquipment)
                gap-4 py-20 text-center"
       >
         <p class="text-lg font-semibold text-slateink">
-          No products available in this category.
+          {{ bookedOutCount ? 'Everything here is booked out for these dates.' : 'No equipment here yet.' }}
         </p>
 
         <p class="max-w-sm text-sm leading-relaxed text-slate-500">
-          Please check back later or select a different category.
+          Try other dates, another category or pickup location.
         </p>
+      </div>
+
+      <!-- Refresh loader over the previous results: keeps the layout in place, no jump. -->
+      <Transition
+        enter-active-class="transition-opacity duration-200"
+        leave-active-class="transition-opacity duration-300"
+        enter-from-class="opacity-0"
+        leave-to-class="opacity-0"
+      >
+        <div
+          v-if="isBusy && equipment.length && !error"
+          class="absolute inset-0 z-10 rounded-3xl bg-slate-50/70 backdrop-blur-[2px]"
+          role="status"
+          aria-label="Updating products"
+        >
+          <div class="sticky top-1/3 flex justify-center py-12">
+            <Spinner />
+          </div>
+        </div>
+      </Transition>
       </div>
     </div>
   </section>

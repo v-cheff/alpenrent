@@ -1,7 +1,19 @@
 import { apiFetch } from './client';
 
-export function getEquipment() {
-  return apiFetch('/equipment');
+/**
+ * Public catalog. Optional filters: { rentalPointId, startDate, endDate }.
+ * With dates each item includes `availableSizes` for that period.
+ */
+export function getEquipment(filters = {}) {
+  const params = new URLSearchParams();
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value !== null && value !== undefined && value !== '') {
+      params.set(key, value);
+    }
+  });
+
+  const query = params.toString();
+  return apiFetch(`/equipment${query ? `?${query}` : ''}`);
 }
 
 export function getMyEquipment() {

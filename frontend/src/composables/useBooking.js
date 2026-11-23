@@ -1,6 +1,6 @@
 import { computed, reactive } from 'vue'
-import { equipment, locations } from '../data/catalog'
 import { createBooking } from '../api/bookings.js'
+import { getRentalPoints } from '../api/rentalPoints.js'
 import { useAuth } from './useAuth'
 
 const today = new Date()
@@ -14,24 +14,52 @@ const addDays = (iso, days) => {
   return toISODate(d)
 }
 
+// Bookings can't start in the past (the API rejects them too).
+const todayISO = toISODate(today)
+
 const state = reactive({
-  startDate: toISODate(today),
-  endDate: addDays(toISODate(today), 2),
+  startDate: todayISO,
+  endDate: addDays(todayISO, 2),
   // 'full_day' | 'half_day' (half day = a single date, from noon)
   rentalType: 'full_day',
-  locationId: 'innsbruck',
-  skill: 'intermediate',
+  // Pickup location filter; null = every rental point
+  rentalPointId: null,
   insurance: false,
   selected: null,
   selectedItemData: null,
   selectedSize: '',
-  availabilityChecked: false,
   sizingOpen: false,
   sizePickerOpen: false,
   bookingSuccess: false,
   bookingSubmitting: false,
   bookingError: '',
+  // Bumped after each booking so the catalog refetches free sizes.
+  catalogVersion: 0,
 })
+
+// Rental points owners have created — the pickup locations on the home page.
+const rentalPoints = reactive({
+  items: [],
+  isLoading: false,
+  loaded: false,
+})
+
+async function loadRentalPoints() {
+  if (rentalPoints.isLoading) return
+  rentalPoints.isLoading = true
+  try {
+    const data = await getRentalPoints()
+    rentalPoints.items = Array.isArray(data) ? data : []
+    rentalPoints.loaded = true
+    if (!rentalPoints.items.some((point) => point.id === state.rentalPointId)) {
+      state.rentalPointId = null
+    }
+  } catch {
+    rentalPoints.items = []
+  } finally {
+    rentalPoints.isLoading = false
+  }
+}
 
 // Ski rentals bill each calendar day, both ends inclusive: 1–4 Dec = 4 days, 1–1 Dec = 1 day.
 function rentalDaysBetween(start, end) {
@@ -48,14 +76,21 @@ export function useBooking() {
     'You are signed in with a rental point owner account. Sign in as a renter to book equipment.'
 
   const durationDays = computed(() => rentalDaysBetween(state.startDate, state.endDate))
+  // Selected pickup location, or null for "all rental points".
   const location = computed(
-    () => locations.find((l) => l.id === state.locationId) ?? locations[0],
+    () => rentalPoints.items.find((point) => point.id === state.rentalPointId) ?? null,
   )
-  const selectedItem = computed(() => {
-    if (state.selectedItemData && state.selectedItemData.id === state.selected) {
-      return state.selectedItemData
-    }
-    return equipment.find((item) => item.id === state.selected) ?? null
+  const selectedItem = computed(() =>
+    state.selectedItemData && state.selectedItemData.id === state.selected
+      ? state.selectedItemData
+      : null,
+  )
+
+  // Sizes free for the selected dates (the catalog sends `availableSizes`); all sizes otherwise.
+  const freeSizes = computed(() => {
+    const item = selectedItem.value
+    if (!item) return []
+    return Array.isArray(item.availableSizes) ? item.availableSizes : item.sizes ?? []
   })
 
   // Half day is offered only for a single date and only if the owner set a half-day rate.
@@ -111,8 +146,7 @@ export function useBooking() {
       return false
     }
 
-    const item = selectedItem.value
-    state.selectedSize = item?.sizes?.[0] ?? ''
+    state.selectedSize = freeSizes.value[0] ?? ''
     state.rentalType = 'full_day'
     state.bookingError = isOwner.value ? OWNER_CANNOT_BOOK : ''
     state.sizePickerOpen = true
@@ -175,6 +209,7 @@ export function useBooking() {
 
       state.sizePickerOpen = false
       state.bookingSuccess = true
+      state.catalogVersion++
       return true
     } catch (error) {
       state.bookingError = error.message || 'Could not complete the booking. Please try again.'
@@ -184,17 +219,28 @@ export function useBooking() {
     }
   }
 
-  function checkAvailability() {
-    state.availabilityChecked = true
+  // Applies the hero search (dates + pickup point) to the catalog and scrolls to it.
+  // The catalog watches these fields and refetches free sizes for the new period.
+  function checkAvailability(filters = null) {
+    if (filters) {
+      setDates(filters.startDate, filters.endDate)
+      state.rentalPointId = filters.rentalPointId ?? null
+      state.catalogVersion++
+    }
     const catalog = document.getElementById('catalog')
     catalog?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   return {
     state,
+    today: todayISO,
+    rentalDaysBetween,
+    rentalPoints,
+    loadRentalPoints,
     durationDays,
     location,
     selectedItem,
+    freeSizes,
     halfDayAvailable,
     effectiveRentalType,
     equipmentTotal,

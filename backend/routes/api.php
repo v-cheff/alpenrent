@@ -15,6 +15,7 @@ Route::post('/auth/logout', [AuthController::class, 'logout'])->middleware('auth
 // Public catalog
 Route::get('/equipment', [EquipmentController::class, 'index']);
 Route::get('/equipment/{equipment}', [EquipmentController::class, 'show']);
+Route::get('/rental-points', [RentalPointController::class, 'publicIndex']);
 
 // Renter area: bookings the current user makes
 Route::middleware(['auth.token', 'role:renter'])->group(function () {

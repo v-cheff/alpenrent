@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useBooking } from '../composables/useBooking'
 
-const { state, selectedItem, durationDays, grandTotal, location, openSizePicker } = useBooking()
+const { state, selectedItem, durationDays, grandTotal, openSizePicker } = useBooking()
 
 const visible = computed(() => !!selectedItem.value)
 </script>
@@ -16,7 +16,7 @@ const visible = computed(() => !!selectedItem.value)
       <div class="min-w-0">
         <p class="truncate text-sm font-extrabold text-slateink">{{ selectedItem.name }} · {{ state.selectedSize }}</p>
         <p class="truncate text-xs text-slate-500">
-          {{ durationDays }} {{ durationDays === 1 ? 'day' : 'days' }} · {{ location.label }} · €{{ grandTotal }} (VAT incl.)
+          {{ durationDays }} {{ durationDays === 1 ? 'day' : 'days' }} · {{ selectedItem.rentalPoint?.name ?? 'Pickup on site' }} · €{{ grandTotal }} (VAT incl.)
         </p>
       </div>
       <button

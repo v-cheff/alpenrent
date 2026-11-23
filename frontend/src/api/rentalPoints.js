@@ -2,6 +2,11 @@ import { apiFetch } from './client.js'
 
 const jsonHeaders = { 'Content-Type': 'application/json' }
 
+// Public: every rental point with equipment (pickup locations)
+export function getRentalPoints() {
+  return apiFetch('/rental-points')
+}
+
 export function getMyRentalPoints() {
   return apiFetch('/my/rental-points')
 }

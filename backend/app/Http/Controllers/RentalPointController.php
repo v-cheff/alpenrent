@@ -12,6 +12,21 @@ use Illuminate\Validation\ValidationException;
  */
 class RentalPointController extends Controller
 {
+    /**
+     * Public list of every rental point that has equipment — the pickup locations on the home page.
+     */
+    public function publicIndex(): JsonResponse
+    {
+        $points = RentalPoint::query()
+            ->whereHas('equipment')
+            ->withCount('equipment')
+            ->orderBy('name')
+            ->get()
+            ->map(fn (RentalPoint $point) => $point->toApiArray());
+
+        return response()->json($points);
+    }
+
     public function index(Request $request): JsonResponse
     {
         $points = $request->user()
