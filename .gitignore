@@ -12,7 +12,7 @@
 /backend/.env
 /backend/storage/*.key
 
-# Системные файлы и IDE
+# OS and IDE files
 .DS_Store
 .vscode/
 .idea/

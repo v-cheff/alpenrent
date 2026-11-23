@@ -1,7 +1,15 @@
 <script setup>
+import { onMounted } from 'vue'
 import { Mountain } from 'lucide-vue-next'
-</script>
+import { useBooking } from '../composables/useBooking'
 
+// Store list comes from the rental points owners have created.
+const { rentalPoints, loadRentalPoints } = useBooking()
+
+onMounted(() => {
+  if (!rentalPoints.loaded) loadRentalPoints()
+})
+</script>
 <template>
   <footer class="border-t border-slate-200 bg-slateink pb-24 pt-12 text-slate-300 md:pb-12">
     <div class="mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 md:grid-cols-3 lg:px-8">
@@ -18,10 +26,8 @@ import { Mountain } from 'lucide-vue-next'
       <div class="text-sm">
         <p class="font-bold text-white">Stores</p>
         <ul class="mt-3 space-y-1">
-          <li>Innsbruck Central Store</li>
-          <li>St. Anton Base Station</li>
-          <li>Sölden Glacier Hub</li>
-          <li>Kitzbühel Town Shop</li>
+          <li v-for="point in rentalPoints.items" :key="point.id">{{ point.name }}</li>
+          <li v-if="rentalPoints.loaded && !rentalPoints.items.length">No rental points yet</li>
         </ul>
       </div>
       <div class="text-sm">

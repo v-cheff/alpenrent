@@ -1,7 +1,6 @@
 FROM php:8.4-cli
 
-# 1. Устанавливаем системные зависимости Linux (нужны для Composer и расширений PHP)
-# Добавлены libsqlite3-dev и libzip-dev для сборки pdo_sqlite и zip
+# System libraries for Composer and the PHP extensions below.
 RUN apt-get update && apt-get install -y \
     git \
     unzip \
@@ -14,35 +13,33 @@ RUN apt-get update && apt-get install -y \
     zip \
     && rm -rf /var/lib/apt/lists/*
 
-# 2. Устанавливаем базовые расширения PHP и PDO-драйверы для PostgreSQL и SQLite
+# PostgreSQL for the app, SQLite for the test suite.
 RUN docker-php-ext-install mbstring bcmath gd xml zip pdo_pgsql pdo_sqlite
 RUN printf 'upload_max_filesize=6M\npost_max_size=8M\n' > /usr/local/etc/php/conf.d/uploads.ini
 
 WORKDIR /app
 
-# 3. Подтягиваем Composer 2
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# 4. Копируем файлы зависимостей прямо из папки backend/
+# Dependencies first, so this layer is cached until composer.lock changes.
 COPY composer.json composer.lock ./
-
-# 5. Качаем vendor-пакеты (шаг сработает быстро благодаря кэшу Docker)
 RUN composer install --no-interaction --prefer-dist --no-scripts --no-autoloader
 
-# 6. Копируем весь остальной код из папки backend/ в /app контейнера
 COPY . .
-
-# 7. Генерируем автозагрузку классов
 RUN composer dump-autoload --optimize
 
-# 8. Создаем служебные папки, файл базы данных и выставляем права для Linux
 RUN mkdir -p storage/framework/sessions \
              storage/framework/views \
              storage/framework/cache \
              bootstrap/cache \
     && chmod -R 777 storage bootstrap/cache
 
+# Kept outside /app (which is bind-mounted in development); CRs stripped in case
+# the repository was checked out with Windows line endings.
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint
+RUN sed -i 's/\r$//' /usr/local/bin/entrypoint && chmod +x /usr/local/bin/entrypoint
+
 EXPOSE 8000
 
-# 9. Автоматическая генерация .env и APP_KEY при отсутствии + запуск сервера
-CMD ["sh", "-c", "if [ ! -f .env ]; then cp .env.example .env && php artisan key:generate; fi && php artisan serve --host=0.0.0.0 --port=8000 --no-reload"]
+# Creates .env and APP_KEY if missing, runs migrations, seeds demo data on first start.
+CMD ["entrypoint"]

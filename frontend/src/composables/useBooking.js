@@ -127,6 +127,14 @@ export function useBooking() {
     }
   }
 
+  // Opens the booking dialog with the first free size preselected.
+  function openPickerForSelection() {
+    state.selectedSize = freeSizes.value[0] ?? ''
+    state.rentalType = 'full_day'
+    state.bookingError = isOwner.value ? OWNER_CANNOT_BOOK : ''
+    state.sizePickerOpen = true
+  }
+
   function selectItem(id, itemData = null) {
     if (itemData) {
       state.selectedItemData = itemData
@@ -138,18 +146,13 @@ export function useBooking() {
       state.sizePickerOpen = false
       openLogin(
         'Please sign in or register to book equipment.',
-        () => {
-          // Automatically resume booking upon successful authorization
-          state.sizePickerOpen = true
-        },
+        // Automatically resume booking upon successful authorization
+        openPickerForSelection,
       )
       return false
     }
 
-    state.selectedSize = freeSizes.value[0] ?? ''
-    state.rentalType = 'full_day'
-    state.bookingError = isOwner.value ? OWNER_CANNOT_BOOK : ''
-    state.sizePickerOpen = true
+    openPickerForSelection()
     return true
   }
 
@@ -160,7 +163,8 @@ export function useBooking() {
         'Please sign in or register to book equipment.',
         () => {
           if (selectedItem.value) {
-            state.sizePickerOpen = true
+            if (state.selectedSize) state.sizePickerOpen = true
+            else openPickerForSelection()
           }
         },
       )

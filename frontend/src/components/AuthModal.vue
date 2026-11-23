@@ -75,6 +75,19 @@ async function handleLogin() {
   }
 }
 
+// Seeded demo users (see DemoAccountsSeeder). Hide with VITE_SHOW_DEMO_ACCOUNTS=false.
+const showDemoAccounts = import.meta.env.VITE_SHOW_DEMO_ACCOUNTS !== 'false'
+const demoAccounts = [
+  { label: 'Renter', hint: 'Anna Huber', email: 'renter@example.com' },
+  { label: 'Owner', hint: 'Tirol Ski Rent', email: 'owner@example.com' },
+]
+
+async function loginAsDemo(account) {
+  loginForm.email = account.email
+  loginForm.password = 'password'
+  await handleLogin()
+}
+
 async function handleRegister() {
   formError.value = ''
 
@@ -271,6 +284,25 @@ async function handleRegister() {
               </svg>
               <span>{{ isLoading ? 'Signing in...' : 'Sign in' }}</span>
             </button>
+
+            <div v-if="showDemoAccounts" class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-3">
+              <p class="text-center text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                Try a demo account
+              </p>
+              <div class="mt-2 grid grid-cols-2 gap-2">
+                <button
+                  v-for="account in demoAccounts"
+                  :key="account.email"
+                  type="button"
+                  :disabled="isLoading"
+                  class="rounded-xl bg-white px-3 py-2 text-left ring-1 ring-slate-200 transition hover:ring-alpine-400 disabled:opacity-60"
+                  @click="loginAsDemo(account)"
+                >
+                  <span class="block text-sm font-bold text-slateink">{{ account.label }}</span>
+                  <span class="block truncate text-xs text-slate-500">{{ account.hint }}</span>
+                </button>
+              </div>
+            </div>
 
             <div class="pt-2 text-center text-xs text-slate-500">
               Don't have an account?

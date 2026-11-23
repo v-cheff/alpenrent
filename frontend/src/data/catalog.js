@@ -13,7 +13,7 @@ export const reviews = [
     name: 'Lena K.',
     city: 'Munich',
     rating: 5,
-    text: 'Bindings adjusted to ISO 11088 in minutes. Skis felt factory-fresh on the first run in Sölden.',
+    text: 'Bindings adjusted to ISO 11088 in minutes. Skis felt factory-fresh on the first run at the Nordkette.',
   },
   {
     name: 'Jonas W.',

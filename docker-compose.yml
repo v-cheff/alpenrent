@@ -3,7 +3,6 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: laravel_backend
     ports:
       - "8000:8000"
     volumes:
@@ -24,7 +23,6 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: vue_frontend
     ports:
       - "5173:5173"
     volumes:
@@ -33,13 +31,13 @@ services:
 
   postgres:
     image: postgres:17-alpine
-    container_name: alpenrent_postgres
     environment:
       POSTGRES_DB: ${DB_DATABASE:-alpenrent}
       POSTGRES_USER: ${DB_USERNAME:-alpenrent}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-alpenrent}
     ports:
-      - "5432:5432"
+      # Host port for DB clients; change it if PostgreSQL already runs locally.
+      - "${DB_FORWARD_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
